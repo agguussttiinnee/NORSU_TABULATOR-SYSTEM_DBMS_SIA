@@ -111,3 +111,18 @@ exports.softDelete = async (id) => {
 
     return result.affectedRows;
 };
+
+// Lookup data used by the event form dropdowns.
+exports.findLookups = async () => {
+    const [eventTypes] = await db.query(
+        'SELECT id, name FROM event_types ORDER BY name'
+    );
+    const [venues] = await db.query(
+        'SELECT id, name, location FROM venues ORDER BY name'
+    );
+    const [colleges] = await db.query(
+        'SELECT id, name, code FROM colleges WHERE is_active = 1 ORDER BY name'
+    );
+
+    return { eventTypes, venues, colleges };
+};

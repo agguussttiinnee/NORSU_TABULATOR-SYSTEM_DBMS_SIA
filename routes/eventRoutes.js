@@ -8,6 +8,10 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 // This initial version restricts all these routes to admins.
 router.use(verifyToken, requireRole('admin'));
 
+// Static paths must be registered before '/:id'.
+router.get('/lookups', events.lookups);
+router.get('/participants', registrations.listParticipants);
+
 router.get('/', events.list);
 router.post('/', events.create);
 
