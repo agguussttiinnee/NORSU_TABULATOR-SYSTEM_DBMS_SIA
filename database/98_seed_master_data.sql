@@ -8,7 +8,8 @@ INSERT IGNORE INTO colleges (name, code) VALUES
  ('College of Business Administration', 'CBA'),
  ('College of Criminal Justice Education', 'CCJE'),
  ('College of Engineering', 'COE'),
- ('College of Teacher Education', 'CTE');
+ ('College of Teacher Education', 'CTE'),
+ ('College of Education', 'COED');
 
 INSERT IGNORE INTO venues (name, location) VALUES
  ('University Gym', 'Main Campus'),
