@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NORSU Tabulator | Log in</title>
+  <style>
+    :root {
+      --navy: #0b1f4d;
+      --blue: #2457a6;
+      --blue-dark: #1b4488;
+      --page: #f3f6fb;
+      --card: #ffffff;
+      --text: #0f1b33;
+      --muted: #5a6882;
+      --line: #d5deee;
+      --error-bg: #fdecec;
+      --error-text: #9b1c1c;
+      --info-bg: #eaf1fd;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+      background: var(--page);
+      color: var(--text);
+    }
+
+    header {
+      background: linear-gradient(120deg, var(--navy), var(--blue));
+      color: #fff;
+      padding: 32px 24px;
+    }
+    header div { max-width: 1080px; margin: 0 auto; }
+    header h1 { margin: 0 0 6px; font-size: 2rem; }
+    header p { margin: 0; opacity: 0.85; }
+
+    main {
+      max-width: 440px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 28px;
+    }
+    .card h2 { margin: 0 0 4px; font-size: 1.4rem; }
+    .card .sub { margin: 0 0 20px; color: var(--muted); font-size: 0.95rem; }
+
+    label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: 0.92rem; }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+    }
+    input:focus-visible, button:focus-visible {
+      outline: 3px solid #9dbcf0;
+      outline-offset: 1px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 22px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 700;
+      color: #fff;
+      background: var(--blue);
+      border: 0;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button:hover { background: var(--blue-dark); }
+    button:disabled { opacity: 0.6; cursor: wait; }
+
+    #message {
+      margin-top: 18px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: var(--info-bg);
+    }
+    #message.error { background: var(--error-bg); color: var(--error-text); }
+    #message[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>NORSU Tabulator System</h1>
+      <p>Log in to manage events, judges and awards</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Log in</h2>
+      <p class="sub">Use the account your admin gave you.</p>
+
+      <form id="loginForm" novalidate>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" placeholder="you@norsu.edu.ph">
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password">
+
+        <button id="loginBtn" type="submit">Log in</button>
+      </form>
+
+      <div id="message" role="alert" hidden></div>
+    </section>
+  </main>
+
+  <script>
+    // ---- Settings you may need to adjust to match authController.js ----
+    const LOGIN_URL = '/api/auth/login';   // confirm in routes/authRoutes.js
+    const TOKEN_KEY = 'norsuToken';        // Carl's pages read this exact key
+    const USER_KEY = 'norsuUser';          // saved so the menu can show the role later
+    const ADMIN_PAGE = '/events.html';
+    const JUDGE_PAGE = '/judge-home.html'; // placeholder page, to be created
+
+    const form = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const button = document.getElementById('loginBtn');
+    const message = document.getElementById('message');
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'error' : '';
+      message.hidden = false;
+    }
+
+    // Works whether the backend returns { token, user } or { data: { token, user } }
+    function readLoginResponse(body) {
+      const payload = body && body.data ? body.data : body;
+      return {
+        token: payload && payload.token,
+        user: (payload && payload.user) || null
+      };
+    }
+
+    // Returns 'admin' or 'judge' from whichever field the backend provides
+    function readRole(user) {
+      if (!user) return '';
+      const name = String(user.role || user.role_name || '').toLowerCase();
+      if (name) return name;
+      if (user.role_id === 1) return 'admin'; // roles table: 1 = admin, 2 = judge
+      if (user.role_id === 2) return 'judge';
+      return '';
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        showMessage('Enter your email and password.', true);
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Logging in...';
+      message.hidden = true;
+
+      try {
+        const response = await fetch(LOGIN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          showMessage(body.message || body.error || 'Login failed. Check your email and password.', true);
+          return;
+        }
+
+        const { token, user } = readLoginResponse(body);
+        if (!token) {
+          showMessage('The server did not send a token. Ask the backend owner to check the login response.', true);
+          return;
+        }
+
+        localStorage.setItem(TOKEN_KEY, token);
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+        const role = readRole(user);
+        window.location.href = role === 'judge' ? JUDGE_PAGE : ADMIN_PAGE;
+      } catch (err) {
+        showMessage('Cannot reach the server. Make sure it is running, then try again.', true);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Log in';
+      }
+    });
+  </script>
+</body>
+</html>
