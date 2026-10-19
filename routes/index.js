@@ -12,6 +12,10 @@ router.use('/event-judges', require('./eventJudgeRoutes'));
 
 // ---- Bernadette: Master data ----
 router.use('/colleges', require('./collegeRoutes'));
+router.use('/event-types', require('./eventTypeRoutes'));
+router.use('/venues', require('./venueRoutes'));
+router.use('/event-types', require('./eventTypeRoutes'));
+router.use('/venues', require('./venueRoutes'));
 
 // ---- Carl: Transactions ----
 // router.use('/events', require('./eventRoutes'));
