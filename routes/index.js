@@ -15,6 +15,7 @@ router.use('/event-judges', require('./eventJudgeRoutes'));
 
 // ---- Carl: Transactions ----
 // router.use('/events', require('./eventRoutes'));
+router.use('/events', require('./eventRoutes'));
 
 // ---- Izy: Rules ----
 // router.use('/scores', require('./scoreRoutes'));
