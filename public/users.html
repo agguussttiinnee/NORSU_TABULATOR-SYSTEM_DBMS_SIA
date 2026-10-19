@@ -18,10 +18,16 @@
     .msg.error { background: #fdecec; color: #9b1c1c; }
     .state { text-align: center; color: var(--nt-muted); }
     label { display: block; margin: 12px 0 6px; font-weight: 600; font-size: 0.92rem; }
-    input, select { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--nt-line); border-radius: 10px; background: #fff; color: var(--nt-text); }
+    input, select { box-sizing: border-box; width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--nt-line); border-radius: 10px; background: #fff; color: var(--nt-text); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn { margin-top: 18px; padding: 10px 16px; font: inherit; font-weight: 700; color: #fff; background: var(--nt-blue); border: 0; border-radius: 10px; cursor: pointer; }
     .btn:hover { background: var(--nt-blue-dark); }
-    .btn:disabled { opacity: 0.6; cursor: wait; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn.secondary { color: var(--nt-blue); background: #eaf1fd; }
+    .btn.secondary:hover { background: #dbe7fb; }
+    .btn.small { margin-top: 0; padding: 6px 12px; font-size: 0.88rem; }
+    .btn.danger { background: #b42318; }
+    .btn.danger:hover { background: #8f1c12; }
   </style>
 </head>
 <body>
@@ -32,7 +38,7 @@
 
     <div class="grid">
       <section class="nt-card">
-        <h2>Add user</h2>
+        <h2 id="formTitle">Add user</h2>
         <form id="userForm" novalidate>
           <label for="fullName">Full name</label>
           <input id="fullName" type="text">
@@ -43,10 +49,13 @@
           <label for="role">Role</label>
           <select id="role"></select>
 
-          <label for="password">Password (at least 8 characters)</label>
+          <label for="password" id="passwordLabel">Password (at least 8 characters)</label>
           <input id="password" type="password" autocomplete="new-password">
 
-          <button class="btn" id="submitBtn" type="submit">Add user</button>
+          <div class="actions">
+            <button class="btn" id="submitBtn" type="submit">Add user</button>
+            <button class="btn secondary" id="cancelBtn" type="button" hidden>Cancel</button>
+          </div>
         </form>
       </section>
 
@@ -55,7 +64,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th></tr>
+              <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr>
             </thead>
             <tbody id="userRows"></tbody>
           </table>
@@ -70,11 +79,17 @@
     const message = document.getElementById('message');
     const rows = document.getElementById('userRows');
     const form = document.getElementById('userForm');
+    const formTitle = document.getElementById('formTitle');
     const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
     const nameInput = document.getElementById('fullName');
     const emailInput = document.getElementById('email');
     const roleSelect = document.getElementById('role');
     const passwordInput = document.getElementById('password');
+    const passwordLabel = document.getElementById('passwordLabel');
+
+    const me = NorsuAuth.getUser();
+    let editingId = null; // null = adding a new user, a number = editing that user
 
     function showMessage(text, isError) {
       message.textContent = text;
@@ -112,10 +127,19 @@
       rows.innerHTML = '';
       const tr = document.createElement('tr');
       const td = cell(text);
-      td.colSpan = 4;
+      td.colSpan = 5;
       td.className = 'state';
       tr.appendChild(td);
       rows.appendChild(tr);
+    }
+
+    function actionButton(label, className, onClick) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn small ' + className;
+      button.textContent = label;
+      button.addEventListener('click', onClick);
+      return button;
     }
 
     function renderRows(users) {
@@ -126,6 +150,19 @@
         tr.appendChild(cell(u.full_name));
         tr.appendChild(cell(u.email));
         tr.appendChild(cell(u.role));
+
+        const actions = document.createElement('td');
+        actions.className = 'actions';
+        actions.appendChild(actionButton('Edit', 'secondary', () => startEdit(u)));
+
+        const deleteBtn = actionButton('Delete', 'danger', () => removeUser(u));
+        if (me && u.id === me.id) {
+          deleteBtn.disabled = true; // the backend refuses to delete your own account
+          deleteBtn.title = 'You cannot delete your own account';
+        }
+        actions.appendChild(deleteBtn);
+
+        tr.appendChild(actions);
         rows.appendChild(tr);
       });
     }
@@ -160,6 +197,43 @@
       }
     }
 
+    function resetForm() {
+      editingId = null;
+      form.reset();
+      formTitle.textContent = 'Add user';
+      submitBtn.textContent = 'Add user';
+      passwordLabel.textContent = 'Password (at least 8 characters)';
+      cancelBtn.hidden = true;
+    }
+
+    function startEdit(user) {
+      editingId = user.id;
+      nameInput.value = user.full_name;
+      emailInput.value = user.email;
+      roleSelect.value = user.role_id;
+      passwordInput.value = '';
+      formTitle.textContent = 'Edit user';
+      submitBtn.textContent = 'Save changes';
+      passwordLabel.textContent = 'New password (leave blank to keep the current one)';
+      cancelBtn.hidden = false;
+      message.hidden = true;
+      nameInput.focus();
+    }
+
+    async function removeUser(user) {
+      if (!confirm('Delete ' + user.full_name + '? They will no longer be able to log in.')) return;
+      try {
+        await request(API + '/' + user.id, { method: 'DELETE' });
+        showMessage('User deleted.');
+        if (editingId === user.id) resetForm();
+        await loadUsers();
+      } catch (err) {
+        showMessage(err.message, true);
+      }
+    }
+
+    cancelBtn.addEventListener('click', resetForm);
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
 
@@ -171,19 +245,28 @@
         showMessage('Fill in the name, email and role.', true);
         return;
       }
-      if (password.length < 8) {
+      if (!editingId && password.length < 8) {
         showMessage('Password must be at least 8 characters.', true);
         return;
       }
+      if (editingId && password && password.length < 8) {
+        showMessage('The new password must be at least 8 characters.', true);
+        return;
+      }
+
+      const payload = { full_name, email, role_id: Number(roleSelect.value) };
+      if (password) payload.password = password; // blank on edit = keep the old password
 
       submitBtn.disabled = true;
       try {
-        await request(API, {
-          method: 'POST',
-          body: JSON.stringify({ full_name, email, password, role_id: Number(roleSelect.value) })
-        });
-        showMessage('User created.');
-        form.reset();
+        if (editingId) {
+          await request(API + '/' + editingId, { method: 'PUT', body: JSON.stringify(payload) });
+          showMessage('User updated.');
+        } else {
+          await request(API, { method: 'POST', body: JSON.stringify(payload) });
+          showMessage('User created.');
+        }
+        resetForm();
         await loadUsers();
       } catch (err) {
         showMessage(err.message, true); // for example 409: Email is already in use
