@@ -71,7 +71,7 @@ exports.remove = async (id) => {
 // ---------- JOIN REPORT (INNER) ----------
 // Leaderboard rows with participant, college and event.
 // ASSUMPTIONS (change if teammates use other column names):
-//   events(id, name)  participants(id, full_name, college_id)  colleges(id, name)
+//   events(id, event_name)  participants(id, name, college_id)  colleges(id, name)
 exports.reportLeaderboard = async (eventId = null, categoryId = null) => {
   let sql = `
     SELECT a.id AS award_id,
