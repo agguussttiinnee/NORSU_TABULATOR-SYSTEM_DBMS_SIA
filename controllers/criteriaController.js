@@ -63,7 +63,7 @@ exports.create = async (req, res) => {
             return error(res, 'Maximum score must be greater than 0', 400);
         }
 
-        const id = await criteria.create({
+        const id = await criteria.createWithWeightLimit({
             event_id,
             name: name.trim(),
             weight,
@@ -78,7 +78,24 @@ exports.create = async (req, res) => {
         );
     } catch (err) {
         console.error('Create criterion error:', err);
-        return error(res, 'Failed to create criterion');
+
+        if (err.code === 'WEIGHT_LIMIT_EXCEEDED') {
+            return error(res, err.message, 400);
+        }
+
+        if (err.code === 'EVENT_NOT_FOUND') {
+            return error(res, 'Event not found', 404);
+        }
+
+        if (err.code === 'ER_DUP_ENTRY') {
+            return error(
+                res,
+                'A criterion with this name already exists for this event',
+                409
+            );
+        }
+
+        return error(res, 'Failed to create criterion', 500);
     }
 };
 
@@ -102,6 +119,7 @@ exports.update = async (req, res) => {
             if (typeof req.body.name !== 'string' || !req.body.name.trim()) {
                 return error(res, 'Criterion name cannot be empty', 400);
             }
+
             fields.name = req.body.name.trim();
         }
 
@@ -129,7 +147,11 @@ exports.update = async (req, res) => {
             return error(res, 'No valid fields provided for update', 400);
         }
 
-        const affectedRows = await criteria.update(id, fields);
+        const affectedRows = await criteria.updateWithWeightLimit(
+            id,
+            existing.event_id,
+            fields
+        );
 
         if (!affectedRows) {
             return error(res, 'No changes were made', 400);
@@ -138,7 +160,24 @@ exports.update = async (req, res) => {
         return success(res, null, 'Criterion updated successfully');
     } catch (err) {
         console.error('Update criterion error:', err);
-        return error(res, 'Failed to update criterion');
+
+        if (err.code === 'WEIGHT_LIMIT_EXCEEDED') {
+            return error(res, err.message, 400);
+        }
+
+        if (err.code === 'CRITERION_NOT_FOUND') {
+            return error(res, 'Criterion not found', 404);
+        }
+
+        if (err.code === 'ER_DUP_ENTRY') {
+            return error(
+                res,
+                'A criterion with this name already exists for this event',
+                409
+            );
+        }
+
+        return error(res, 'Failed to update criterion', 500);
     }
 };
 
