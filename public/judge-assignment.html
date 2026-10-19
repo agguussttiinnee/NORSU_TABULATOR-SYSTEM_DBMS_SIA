@@ -19,6 +19,12 @@
     .state { text-align: center; color: var(--nt-muted); }
     label { display: block; margin: 12px 0 6px; font-weight: 600; font-size: 0.92rem; }
     select { box-sizing: border-box; width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--nt-line); border-radius: 10px; background: #fff; color: var(--nt-text); }
+    .btn { margin-top: 18px; padding: 10px 16px; font: inherit; font-weight: 700; color: #fff; background: var(--nt-blue); border: 0; border-radius: 10px; cursor: pointer; }
+    .btn:hover { background: var(--nt-blue-dark); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn.small { margin-top: 0; padding: 6px 12px; font-size: 0.88rem; }
+    .btn.danger { background: #b42318; }
+    .btn.danger:hover { background: #8f1c12; }
   </style>
 </head>
 <body>
@@ -36,6 +42,8 @@
 
           <label for="judgeSelect">Judge</label>
           <select id="judgeSelect"></select>
+
+          <button class="btn" id="assignBtn" type="submit">Assign judge</button>
         </form>
       </section>
 
@@ -44,7 +52,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Event</th><th>Judge</th><th>Email</th><th>Assigned</th></tr>
+              <tr><th>Event</th><th>Judge</th><th>Email</th><th>Assigned</th><th>Actions</th></tr>
             </thead>
             <tbody id="assignmentRows"></tbody>
           </table>
@@ -60,6 +68,8 @@
     const API_ASSIGN = '/api/event-judges';
 
     const message = document.getElementById('message');
+    const form = document.getElementById('assignForm');
+    const assignBtn = document.getElementById('assignBtn');
     const eventSelect = document.getElementById('eventSelect');
     const judgeSelect = document.getElementById('judgeSelect');
     const assignmentRows = document.getElementById('assignmentRows');
@@ -150,24 +160,74 @@
         tr.appendChild(cell(judge ? judge.full_name : 'User #' + a.user_id));
         tr.appendChild(cell(judge ? judge.email : ''));
         tr.appendChild(cell(new Date(a.assigned_at).toLocaleString()));
+
+        const actions = document.createElement('td');
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn small danger';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => removeAssignment(a));
+        actions.appendChild(removeBtn);
+        tr.appendChild(actions);
+
         assignmentRows.appendChild(tr);
       });
     }
 
     async function loadAssignments() {
-      messageRow(assignmentRows, 4, 'Loading assignments...');
+      messageRow(assignmentRows, 5, 'Loading assignments...');
       try {
         const list = await request(API_ASSIGN);
         if (!list.length) {
-          messageRow(assignmentRows, 4, 'No judges assigned yet.');
+          messageRow(assignmentRows, 5, 'No judges assigned yet.');
           return;
         }
         renderAssignments(list);
       } catch (err) {
-        messageRow(assignmentRows, 4, 'Could not load assignments.');
+        messageRow(assignmentRows, 5, 'Could not load assignments.');
         showMessage(err.message, true);
       }
     }
+
+    async function removeAssignment(a) {
+      const event = findEvent(a.event_id);
+      const judge = findJudge(a.user_id);
+      const text = 'Remove ' + (judge ? judge.full_name : 'this judge') + ' from ' + (event ? eventLabel(event) : 'this event') + '?';
+      if (!confirm(text)) return;
+      try {
+        await request(API_ASSIGN + '/' + a.id, { method: 'DELETE' });
+        showMessage('Judge removed from the event.');
+        await loadAssignments();
+      } catch (err) {
+        showMessage(err.message, true); // for example 404: Assignment not found
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!eventSelect.value || !judgeSelect.value) {
+        showMessage('Choose an event and a judge first.', true);
+        return;
+      }
+
+      assignBtn.disabled = true;
+      try {
+        await request(API_ASSIGN, {
+          method: 'POST',
+          body: JSON.stringify({
+            event_id: Number(eventSelect.value),
+            user_id: Number(judgeSelect.value)
+          })
+        });
+        showMessage('Judge assigned to the event.');
+        await loadAssignments();
+      } catch (err) {
+        showMessage(err.message, true); // 409: already assigned, 400: not a judge or event missing
+      } finally {
+        assignBtn.disabled = false;
+      }
+    });
 
     async function start() {
       try {
