@@ -4,64 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NORSU Tabulator | Events</title>
+<link rel="stylesheet" href="/css/app.css">
 <style>
-:root{color-scheme:light;--navy:#10264d;--blue:#2459a9;--line:#dbe3ef;--muted:#63718a;--bg:#f3f6fb}
 *{box-sizing:border-box}
-body{margin:0;font:15px/1.5 system-ui,sans-serif;color:#18253b;background:var(--bg)}
-header{color:white;background:linear-gradient(120deg,#0d1d3b,#1d4c91);padding:26px max(20px,calc((100% - 1120px)/2))}
-header h1{margin:0 0 4px;font-size:clamp(24px,3vw,34px)}
-header p{margin:0;color:#dbe9ff}
-main{max-width:1120px;margin:22px auto;padding:0 18px 36px}
-.nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.nav a{color:var(--blue);background:white;border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-decoration:none;font-weight:650}
-.grid{display:grid;grid-template-columns:minmax(270px,360px) 1fr;gap:18px;align-items:start}
-.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 6px 24px #152b4c0a}
+body{margin:0;background:var(--nt-page);color:var(--nt-text);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+main{max-width:1180px;margin:24px auto;padding:0 20px 40px}
+.grid{display:grid;grid-template-columns:minmax(280px,380px) minmax(0,1fr);gap:18px;align-items:start}
+.card{background:#fff;border:1px solid var(--nt-line);border-radius:16px;padding:20px;box-shadow:0 6px 24px #152b4c0a}
 h2{margin:0 0 14px;font-size:19px}
-label{display:block;font-size:13px;font-weight:700;margin:11px 0 5px}
-input,select{width:100%;padding:10px 11px;border:1px solid #cbd5e3;border-radius:9px;font:inherit;background:white}
-input:focus,select:focus{outline:3px solid #b9d4ff;border-color:var(--blue)}
-button{border:0;background:var(--blue);color:white;padding:10px 13px;border-radius:9px;cursor:pointer;font:inherit;font-weight:700}
+label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px}
+input,select{width:100%;padding:10px 11px;border:1px solid #cbd5e3;border-radius:9px;font:inherit;background:#fff;color:var(--nt-text)}
+input:focus,select:focus{outline:3px solid #b9d4ff;border-color:var(--nt-blue)}
+button{border:0;background:var(--nt-blue);color:#fff;padding:10px 13px;border-radius:9px;cursor:pointer;font:inherit;font-weight:700}
 button.secondary{background:#e8eef8;color:#23436f}
 button.danger{background:#a6313a}
 button.small{padding:6px 9px;font-size:13px;margin:2px}
+button:disabled{opacity:.6;cursor:not-allowed}
 .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
-.muted{color:var(--muted);font-size:13px}
-.notice{padding:10px 12px;border-radius:9px;margin:12px 0;background:#edf4ff;color:#173b76;white-space:pre-wrap}
+.muted{color:var(--nt-muted);font-size:13px}
+.notice{padding:10px 12px;border-radius:9px;margin:0 0 18px;background:#edf4ff;color:#173b76;white-space:pre-wrap}
 .notice.error{background:#fff0f0;color:#8c2028}
-.token-row{display:flex;gap:8px;align-items:end}
-.token-row>div{flex:1}
 .table-wrap{overflow:auto}
-table{width:100%;border-collapse:collapse;min-width:650px}
+table{width:100%;border-collapse:collapse;min-width:700px}
 th,td{padding:10px 9px;text-align:left;border-bottom:1px solid #e8edf5;vertical-align:top}
 th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;background:#f8faff}
 .status{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef2f8;font-size:12px;font-weight:700}
-@media(max-width:800px){.grid{grid-template-columns:1fr}.token-row{align-items:stretch;flex-direction:column}}
+@media(max-width:850px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<header>
-<h1>NORSU Tabulator System</h1>
-<p>Events management · Transactions module</p>
-</header>
+<div id="app-header" data-title="NORSU Tabulator System" data-subtitle="Events management · Transactions module" data-role="admin"></div>
+
 <main>
-<nav class="nav">
-<a href="events.html">Events</a>
-<a href="participant-registration.html">Participant registration</a>
-</nav>
-
-<section class="card" style="margin-bottom:18px">
-<h2>Admin API access</h2>
-<p class="muted">Paste the token returned by the shared login endpoint.</p>
-<div class="token-row">
-<div>
-<label for="token">Bearer token</label>
-<input id="token" type="password" autocomplete="off" placeholder="Paste admin token">
-</div>
-<button id="saveToken" type="button">Save token</button>
-</div>
-<div id="notice" class="notice" role="status">Enter an admin token, then load events.</div>
-</section>
-
+<div id="notice" class="notice" role="status">Checking your administrator session…</div>
 <div class="grid">
 <section class="card">
 <h2 id="formTitle">Create event</h2>
@@ -70,11 +45,11 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 <label for="event_name">Event name</label>
 <input id="event_name" maxlength="100" required placeholder="e.g. NORSU College Pageant">
 
-<label for="event_type_id">Event type ID</label>
-<input id="event_type_id" type="number" min="1" step="1" required>
+<label for="event_type_id">Event type</label>
+<select id="event_type_id" required><option value="">Loading event types…</option></select>
 
-<label for="venue_id">Venue ID</label>
-<input id="venue_id" type="number" min="1" step="1" required>
+<label for="venue_id">Venue</label>
+<select id="venue_id" required><option value="">Loading venues…</option></select>
 
 <label for="event_date">Event date and time</label>
 <input id="event_date" type="datetime-local" required>
@@ -92,7 +67,7 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 <button type="button" class="secondary" id="cancelEdit" hidden>Cancel edit</button>
 <button type="button" class="secondary" id="refresh">Refresh list</button>
 </div>
-<p class="muted">Use valid IDs from your group's event_types and venues tables.</p>
+<p class="muted">Event type and venue options are loaded from the shared master-data lookup endpoint.</p>
 </form>
 </section>
 
@@ -100,179 +75,158 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 <h2>Active events</h2>
 <div class="table-wrap">
 <table>
-<thead>
-<tr><th>ID</th><th>Event</th><th>Type / Venue IDs</th><th>Date</th><th>Status</th><th>Actions</th></tr>
-</thead>
-<tbody id="eventsBody">
-<tr><td colspan="6" class="muted">Events haven't been loaded yet.</td></tr>
-</tbody>
+<thead><tr><th>ID</th><th>Event</th><th>Type</th><th>Venue</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody id="eventsBody"><tr><td colspan="7" class="muted">Events have not been loaded yet.</td></tr></tbody>
 </table>
 </div>
 </section>
 </div>
 </main>
 
+<script src="/js/layout.js"></script>
+<script src="/js/transaction-auth.js"></script>
 <script>
-const API='/api';
-const $=id=>document.getElementById(id);
-$('token').value=localStorage.getItem('norsuToken')||'';
+'use strict';
+const $ = id => document.getElementById(id);
+const api = window.NorsuTransaction.api;
+let lookups = { eventTypes: [], venues: [], colleges: [] };
 
-function show(message,isError=false){
-    $('notice').textContent=message;
-    $('notice').classList.toggle('error',isError);
+function show(message, isError = false) {
+    $('notice').textContent = message;
+    $('notice').classList.toggle('error', isError);
 }
 
-function authHeaders(json=true){
-    const token=$('token').value.trim();
-    if(token)localStorage.setItem('norsuToken',token);
-    return {
-        ...(json?{'Content-Type':'application/json'}:{}),
-        ...(token?{Authorization:`Bearer ${token}`}:{})
-    };
+function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[character]));
 }
 
-async function api(path,options={}){
-    const response=await fetch(`${API}${path}`,{
-        ...options,
-        headers:{
-            ...authHeaders(options.body!==undefined),
-            ...(options.headers||{})
-        }
-    });
+function mysqlToInput(value) {
+    return value ? String(value).replace(' ', 'T').slice(0, 16) : '';
+}
 
-    let payload;
-    try{payload=await response.json();}
-    catch{throw new Error(`Server returned HTTP ${response.status} without JSON`);}
+function fillSelect(id, rows, placeholder, selectedValue = '') {
+    const select = $(id);
+    select.innerHTML = `<option value="">${esc(placeholder)}</option>` + rows.map(row =>
+        `<option value="${esc(row.id)}">${esc(row.name)}</option>`
+    ).join('');
+    if (selectedValue !== '') select.value = String(selectedValue);
+}
 
-    if(!response.ok||payload.success===false){
-        throw new Error(payload.message||`Request failed (${response.status})`);
+async function loadLookups() {
+    lookups = await api('/events/lookups');
+    fillSelect('event_type_id', lookups.eventTypes || [], 'Select an event type');
+    fillSelect('venue_id', lookups.venues || [], 'Select a venue');
+    if (!lookups.eventTypes?.length || !lookups.venues?.length) {
+        show('Master data is empty. Add event types and venues before creating events.', true);
     }
-
-    return payload.data;
 }
 
-function esc(value){
-    return String(value??'').replace(/[&<>"']/g,c=>({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[c]));
-}
-
-function mysqlToInput(value){
-    if(!value)return '';
-    return String(value).replace(' ','T').slice(0,16);
-}
-
-function resetForm(){
+function resetForm() {
     $('eventForm').reset();
-    $('eventId').value='';
-    $('formTitle').textContent='Create event';
-    $('submitEvent').textContent='Create event';
-    $('cancelEdit').hidden=true;
+    $('eventId').value = '';
+    $('formTitle').textContent = 'Create event';
+    $('submitEvent').textContent = 'Create event';
+    $('cancelEdit').hidden = true;
 }
 
-async function loadEvents(){
-    $('eventsBody').innerHTML=
-        '<tr><td colspan="6" class="muted">Loading events…</td></tr>';
-
-    try{
-        const events=await api('/events');
-
-        if(!events.length){
-            $('eventsBody').innerHTML=
-                '<tr><td colspan="6" class="muted">No active events found.</td></tr>';
-        }else{
-            $('eventsBody').innerHTML=events.map(e=>`<tr>
-                <td>${esc(e.id)}</td>
-                <td><strong>${esc(e.event_name)}</strong></td>
-                <td>${esc(e.event_type_id)} / ${esc(e.venue_id)}</td>
-                <td>${esc(e.event_date)}</td>
-                <td><span class="status">${esc(e.status)}</span></td>
+async function loadEvents() {
+    $('eventsBody').innerHTML = '<tr><td colspan="7" class="muted">Loading events…</td></tr>';
+    try {
+        const events = await api('/events');
+        if (!events.length) {
+            $('eventsBody').innerHTML = '<tr><td colspan="7" class="muted">No active events found.</td></tr>';
+        } else {
+            const typeNames = new Map((lookups.eventTypes || []).map(item => [String(item.id), item.name]));
+            const venueNames = new Map((lookups.venues || []).map(item => [String(item.id), item.name]));
+            $('eventsBody').innerHTML = events.map(item => `<tr>
+                <td>${esc(item.id)}</td>
+                <td><strong>${esc(item.event_name)}</strong></td>
+                <td>${esc(typeNames.get(String(item.event_type_id)) || `ID ${item.event_type_id}`)}</td>
+                <td>${esc(venueNames.get(String(item.venue_id)) || `ID ${item.venue_id}`)}</td>
+                <td>${esc(item.event_date)}</td>
+                <td><span class="status">${esc(item.status)}</span></td>
                 <td>
-                    <button class="small secondary" data-edit="${esc(e.id)}">Edit</button>
-                    <button class="small danger" data-delete="${esc(e.id)}">Deactivate</button>
-                    <a href="participant-registration.html?event_id=${encodeURIComponent(e.id)}">Register</a>
+                    <button class="small secondary" type="button" data-edit="${esc(item.id)}">Edit</button>
+                    <button class="small danger" type="button" data-delete="${esc(item.id)}">Deactivate</button>
+                    <a href="/participant-registration.html?event_id=${encodeURIComponent(item.id)}">Register</a>
                 </td>
             </tr>`).join('');
         }
-
         show(`Loaded ${events.length} active event(s).`);
-    }catch(e){
-        $('eventsBody').innerHTML=
-            '<tr><td colspan="6" class="muted">Unable to load events.</td></tr>';
-        show(`${e.message}\nCheck your admin token, server, database schema, and route registration.`,true);
+    } catch (error) {
+        $('eventsBody').innerHTML = '<tr><td colspan="7" class="muted">Unable to load events.</td></tr>';
+        show(`${error.message}\nCheck the API, database, and administrator account.`, true);
     }
 }
 
-$('saveToken').addEventListener('click',()=>{
-    localStorage.setItem('norsuToken',$('token').value.trim());
-    show('Token saved in this browser.');
-    loadEvents();
-});
-
-$('refresh').addEventListener('click',loadEvents);
-$('cancelEdit').addEventListener('click',resetForm);
-
-$('eventForm').addEventListener('submit',async event=>{
+$('eventForm').addEventListener('submit', async event => {
     event.preventDefault();
-
-    const id=$('eventId').value;
-    const payload={
-        event_name:$('event_name').value.trim(),
-        event_type_id:Number($('event_type_id').value),
-        venue_id:Number($('venue_id').value),
-        event_date:$('event_date').value,
-        status:$('status').value
+    const id = $('eventId').value;
+    const payload = {
+        event_name: $('event_name').value.trim(),
+        event_type_id: Number($('event_type_id').value),
+        venue_id: Number($('venue_id').value),
+        event_date: $('event_date').value,
+        status: $('status').value
     };
-
-    try{
-        await api(id?`/events/${id}`:'/events',{
-            method:id?'PATCH':'POST',
-            body:JSON.stringify(payload)
+    try {
+        await api(id ? `/events/${id}` : '/events', {
+            method: id ? 'PATCH' : 'POST',
+            body: JSON.stringify(payload)
         });
-
-        show(id?'Event updated.':'Event created.');
+        show(id ? 'Event updated.' : 'Event created.');
         resetForm();
         await loadEvents();
-    }catch(e){
-        show(e.message,true);
+    } catch (error) {
+        show(error.message, true);
     }
 });
 
-$('eventsBody').addEventListener('click',async event=>{
-    const editId=event.target.getAttribute('data-edit');
-    const deleteId=event.target.getAttribute('data-delete');
-
-    if(editId){
-        try{
-            const e=await api(`/events/${editId}`);
-            $('eventId').value=e.id;
-            $('event_name').value=e.event_name;
-            $('event_type_id').value=e.event_type_id;
-            $('venue_id').value=e.venue_id;
-            $('event_date').value=mysqlToInput(e.event_date);
-            $('status').value=e.status;
-
-            $('formTitle').textContent=`Edit event #${e.id}`;
-            $('submitEvent').textContent='Save changes';
-            $('cancelEdit').hidden=false;
-            window.scrollTo({top:0,behavior:'smooth'});
-        }catch(e){
-            show(e.message,true);
+$('eventsBody').addEventListener('click', async event => {
+    const editButton = event.target.closest('[data-edit]');
+    const deleteButton = event.target.closest('[data-delete]');
+    if (editButton) {
+        try {
+            const item = await api(`/events/${editButton.dataset.edit}`);
+            $('eventId').value = item.id;
+            $('event_name').value = item.event_name;
+            $('event_type_id').value = String(item.event_type_id);
+            $('venue_id').value = String(item.venue_id);
+            $('event_date').value = mysqlToInput(item.event_date);
+            $('status').value = item.status;
+            $('formTitle').textContent = `Edit event #${item.id}`;
+            $('submitEvent').textContent = 'Save changes';
+            $('cancelEdit').hidden = false;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (error) {
+            show(error.message, true);
         }
     }
-
-    if(deleteId&&confirm(`Deactivate event #${deleteId}? Existing registrations will remain.`)){
-        try{
-            await api(`/events/${deleteId}`,{method:'DELETE'});
-            show(`Event #${deleteId} deactivated.`);
+    if (deleteButton && confirm(`Deactivate event #${deleteButton.dataset.delete}? Existing registrations will remain.`)) {
+        try {
+            await api(`/events/${deleteButton.dataset.delete}`, { method: 'DELETE' });
+            show(`Event #${deleteButton.dataset.delete} deactivated.`);
             await loadEvents();
-        }catch(e){
-            show(e.message,true);
+        } catch (error) {
+            show(error.message, true);
         }
     }
 });
 
-if($('token').value)loadEvents();
+$('cancelEdit').addEventListener('click', resetForm);
+$('refresh').addEventListener('click', loadEvents);
+
+(async function start() {
+    try {
+        await window.NorsuTransaction.requireAdmin();
+        await loadLookups();
+        await loadEvents();
+    } catch (error) {
+        show(error.message, true);
+    }
+})();
 </script>
 </body>
 </html>

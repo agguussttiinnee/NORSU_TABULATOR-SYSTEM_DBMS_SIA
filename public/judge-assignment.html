@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NORSU Tabulator | Judge assignment</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { margin: 0; background: var(--nt-page); color: var(--nt-text); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+    [hidden] { display: none !important; }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--nt-line); }
+    th { font-size: 0.8rem; text-transform: uppercase; color: var(--nt-muted); }
+    .table-wrap { overflow-x: auto; }
+    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; background: #eaf1fd; }
+    .msg.error { background: #fdecec; color: #9b1c1c; }
+    .state { text-align: center; color: var(--nt-muted); }
+    label { display: block; margin: 12px 0 6px; font-weight: 600; font-size: 0.92rem; }
+    select { box-sizing: border-box; width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--nt-line); border-radius: 10px; background: #fff; color: var(--nt-text); }
+    .btn { margin-top: 18px; padding: 10px 16px; font: inherit; font-weight: 700; color: #fff; background: var(--nt-blue); border: 0; border-radius: 10px; cursor: pointer; }
+    .btn:hover { background: var(--nt-blue-dark); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn.small { margin-top: 0; padding: 6px 12px; font-size: 0.88rem; }
+    .btn.danger { background: #b42318; }
+    .btn.danger:hover { background: #8f1c12; }
+    .note { margin: 0 0 12px; color: var(--nt-muted); font-size: 0.92rem; }
+  </style>
+</head>
+<body>
+  <div id="app-header" data-title="NORSU Tabulator System" data-subtitle="Judge assignment" data-role="admin"></div>
+
+  <main class="nt-main">
+    <div id="message" class="msg" role="alert" hidden></div>
+
+    <div class="grid">
+      <section class="nt-card">
+        <h2>Assign a judge</h2>
+        <form id="assignForm" novalidate>
+          <label for="eventSelect">Event</label>
+          <select id="eventSelect"></select>
+
+          <label for="judgeSelect">Judge</label>
+          <select id="judgeSelect"></select>
+
+          <button class="btn" id="assignBtn" type="submit">Assign judge</button>
+        </form>
+      </section>
+
+      <section class="nt-card">
+        <h2>Current assignments</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Event</th><th>Judge</th><th>Email</th><th>Assigned</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="assignmentRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <section class="nt-card">
+      <h2>Judges per event (report)</h2>
+      <p class="note">An INNER join of event_judges, events, users and roles. Events with no judges are not shown.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Event</th><th>Judge</th><th>Email</th><th>Role</th><th>Assigned</th></tr>
+          </thead>
+          <tbody id="reportRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/layout.js"></script>
+  <script>
+    const API_EVENTS = '/api/events';
+    const API_USERS = '/api/users';
+    const API_ASSIGN = '/api/event-judges';
+
+    const message = document.getElementById('message');
+    const form = document.getElementById('assignForm');
+    const assignBtn = document.getElementById('assignBtn');
+    const eventSelect = document.getElementById('eventSelect');
+    const judgeSelect = document.getElementById('judgeSelect');
+    const assignmentRows = document.getElementById('assignmentRows');
+    const reportRows = document.getElementById('reportRows');
+
+    let events = [];
+    let judges = [];
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'msg error' : 'msg';
+      message.hidden = false;
+    }
+
+    // One place for every request: adds the token and turns errors into readable messages.
+    async function request(url, options) {
+         let response;
+   try {
+     response = await fetch(url, Object.assign({
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': 'Bearer ' + NorsuAuth.getToken()
+       }
+     }, options));
+   } catch (networkError) {
+     throw new Error('Cannot reach the server. Make sure it is running, then try again.');
+   }
+      const body = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        NorsuAuth.logout();
+        throw new Error('Your session expired. Please log in again.');
+      }
+      if (response.status === 403) throw new Error('Only admins can assign judges.');
+      if (!response.ok) throw new Error(body.message || 'Request failed (' + response.status + ').');
+
+      const data = body.data !== undefined ? body.data : body;
+      return data;
+    }
+
+    function cell(text) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      return td;
+    }
+
+    function messageRow(tbody, columns, text) {
+      tbody.innerHTML = '';
+      const tr = document.createElement('tr');
+      const td = cell(text);
+      td.colSpan = columns;
+      td.className = 'state';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }
+
+    function eventLabel(e) { return e.event_name || e.name || ('Event #' + e.id); }
+
+    function fillSelect(select, items, getLabel, emptyText) {
+      select.innerHTML = '';
+      if (!items.length) {
+        const option = document.createElement('option');
+        option.textContent = emptyText;
+        option.value = '';
+        select.appendChild(option);
+        return;
+      }
+      items.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = getLabel(item);
+        select.appendChild(option);
+      });
+    }
+
+    async function loadChoices() {
+      const [eventList, userList] = await Promise.all([request(API_EVENTS), request(API_USERS)]);
+      events = Array.isArray(eventList) ? eventList : [];
+      judges = (Array.isArray(userList) ? userList : []).filter((u) => u.role === 'judge');
+      fillSelect(eventSelect, events, eventLabel, 'No events yet');
+      fillSelect(judgeSelect, judges, (u) => u.full_name + ' (' + u.email + ')', 'No judges yet');
+    }
+
+    function findEvent(id) { return events.find((e) => e.id === id); }
+    function findJudge(id) { return judges.find((u) => u.id === id); }
+
+    function renderAssignments(list) {
+      assignmentRows.innerHTML = '';
+      list.forEach((a) => {
+        const event = findEvent(a.event_id);
+        const judge = findJudge(a.user_id);
+        const tr = document.createElement('tr');
+        tr.appendChild(cell(event ? eventLabel(event) : 'Event #' + a.event_id));
+        tr.appendChild(cell(judge ? judge.full_name : 'User #' + a.user_id));
+        tr.appendChild(cell(judge ? judge.email : ''));
+        tr.appendChild(cell(new Date(a.assigned_at).toLocaleString()));
+
+        const actions = document.createElement('td');
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn small danger';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => removeAssignment(a));
+        actions.appendChild(removeBtn);
+        tr.appendChild(actions);
+
+        assignmentRows.appendChild(tr);
+      });
+    }
+
+    async function loadAssignments() {
+      messageRow(assignmentRows, 5, 'Loading assignments...');
+      try {
+        const list = await request(API_ASSIGN);
+        if (!list.length) {
+          messageRow(assignmentRows, 5, 'No judges assigned yet.');
+          return;
+        }
+        renderAssignments(list);
+      } catch (err) {
+        messageRow(assignmentRows, 5, 'Could not load assignments.');
+        showMessage(err.message, true);
+      }
+    }
+
+    // Step 6: the INNER join report from GET /api/event-judges/report
+    async function loadReport() {
+      messageRow(reportRows, 5, 'Loading report...');
+      try {
+        const list = await request(API_ASSIGN + '/report');
+        if (!list.length) {
+          messageRow(reportRows, 5, 'No judges assigned yet.');
+          return;
+        }
+        reportRows.innerHTML = '';
+        list.forEach((r) => {
+          const tr = document.createElement('tr');
+          tr.appendChild(cell(r.event_name));
+          tr.appendChild(cell(r.judge_name));
+          tr.appendChild(cell(r.email));
+          tr.appendChild(cell(r.role));
+          tr.appendChild(cell(new Date(r.assigned_at).toLocaleString()));
+          reportRows.appendChild(tr);
+        });
+      } catch (err) {
+        messageRow(reportRows, 5, 'Could not load the report.');
+        showMessage(err.message, true);
+      }
+    }
+
+    async function refreshLists() {
+      await loadAssignments();
+      await loadReport();
+    }
+
+    async function removeAssignment(a) {
+      const event = findEvent(a.event_id);
+      const judge = findJudge(a.user_id);
+      const text = 'Remove ' + (judge ? judge.full_name : 'this judge') + ' from ' + (event ? eventLabel(event) : 'this event') + '?';
+      if (!confirm(text)) return;
+      try {
+        await request(API_ASSIGN + '/' + a.id, { method: 'DELETE' });
+        showMessage('Judge removed from the event.');
+        await refreshLists();
+      } catch (err) {
+        showMessage(err.message, true); // for example 404: Assignment not found
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!eventSelect.value || !judgeSelect.value) {
+        showMessage('Choose an event and a judge first.', true);
+        return;
+      }
+
+      assignBtn.disabled = true;
+      try {
+        await request(API_ASSIGN, {
+          method: 'POST',
+          body: JSON.stringify({
+            event_id: Number(eventSelect.value),
+            user_id: Number(judgeSelect.value)
+          })
+        });
+        showMessage('Judge assigned to the event.');
+        await refreshLists();
+      } catch (err) {
+        showMessage(err.message, true); // 409: already assigned, 400: not a judge or event missing
+      } finally {
+        assignBtn.disabled = false;
+      }
+    });
+
+    async function start() {
+      try {
+        await loadChoices();
+      } catch (err) {
+        showMessage('Could not load events or judges: ' + err.message, true);
+      }
+      refreshLists();
+    }
+
+    start();
+  </script>
+</body>
+</html>
