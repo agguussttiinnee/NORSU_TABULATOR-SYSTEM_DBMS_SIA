@@ -24,6 +24,6 @@ router.use('/events', require('./eventRoutes'));
 // router.use('/score-revisions', require('./scoreRevisionRoutes'));
 
 // ---- Gretchen: Reports ----
-// router.use('/awards', require('./awardRoutes'));
+router.use('/awards', require('./awardRoutes'));
 
 module.exports = router;

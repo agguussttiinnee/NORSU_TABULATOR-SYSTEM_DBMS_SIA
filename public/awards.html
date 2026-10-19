@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NORSU Tabulator - Awards & Leaderboard</title>
+<style>
+  :root { --navy:#1f3864; --bg:#f4f6fa; --line:#d9deea; --text:#1d2433; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); }
+  header { background:var(--navy); color:#fff; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
+  main { max-width:1100px; margin:20px auto; padding:0 16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:18px; }
+  h2 { margin:0 0 12px; font-size:18px; color:var(--navy); }
+  input, select, button { padding:8px 10px; border:1px solid var(--line); border-radius:6px; font-size:14px; }
+  button { background:var(--navy); color:#fff; cursor:pointer; border:none; }
+  button.danger { background:#b3261e; } button.light { background:#e8ecf5; color:var(--navy); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { background:var(--navy); color:#fff; text-align:left; padding:8px; }
+  td { padding:8px; border-bottom:1px solid var(--line); }
+  .msg { font-size:13px; margin-top:6px; min-height:18px; } .err { color:#b3261e; } .ok { color:#1b7a3a; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <strong>NORSU Tabulator - Awards &amp; Leaderboard</strong>
+  <span id="who"></span>
+</header>
+
+<main>
+  <!-- Login -->
+  <section class="card" id="loginBox">
+    <h2>Login</h2>
+    <div class="row">
+      <input id="apiUrl" value="http://localhost:3000/api" size="26" title="API base URL">
+      <input id="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password">
+      <button id="loginBtn">Login</button>
+    </div>
+    <div class="msg err" id="loginMsg"></div>
+  </section>
+
+  <div id="app" class="hidden">
+    <!-- Leaderboard: GET /awards/leaderboard (INNER JOIN report) -->
+    <section class="card">
+      <h2>Leaderboard</h2>
+      <div class="row">
+        <input id="fEvent" type="number" placeholder="Event ID (optional)">
+        <select id="fCategory"><option value="">All categories</option></select>
+        <button id="loadBoard">Load leaderboard</button>
+      </div>
+      <table>
+        <thead><tr><th>Event</th><th>Category</th><th>Rank</th><th>Participant</th><th>College</th><th>Score</th><th>Remarks</th><th></th></tr></thead>
+        <tbody id="boardBody"></tbody>
+      </table>
+      <div class="msg" id="boardMsg"></div>
+    </section>
+
+    <!-- Awards form: POST / PATCH /awards (admin only) -->
+    <section class="card" id="formCard">
+      <h2 id="formTitle">Give an award</h2>
+      <div class="row">
+        <input id="aEvent" type="number" placeholder="Event ID">
+        <input id="aParticipant" type="number" placeholder="Participant ID">
+        <select id="aCategory"></select>
+        <input id="aRank" type="number" min="1" placeholder="Rank">
+        <input id="aScore" type="number" step="0.01" placeholder="Total score">
+        <input id="aRemarks" placeholder="Remarks">
+        <button id="saveBtn">Save award</button>
+        <button id="cancelBtn" class="light hidden">Cancel edit</button>
+      </div>
+      <div class="msg" id="formMsg"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let token = '', role = '', editingId = null, boardRows = [];
+const api = () => $('apiUrl').value.replace(/\/$/, '');
+
+async function call(path, method = 'GET', body) {
+  const res = await fetch(api() + path, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token && { Authorization: 'Bearer ' + token }) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message);
+  return json.data;
+}
+const show = (el, text, ok) => { $(el).textContent = text; $(el).className = 'msg ' + (ok ? 'ok' : 'err'); };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+$('loginBtn').onclick = async () => {
+  try {
+    const d = await call('/auth/login', 'POST', { email: $('email').value, password: $('password').value });
+    token = d.token; role = d.user.role;
+    $('who').textContent = `${d.user.full_name} (${role})`;
+    $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('formCard').classList.toggle('hidden', role !== 'admin');
+    await loadCategories(); await loadBoard();
+  } catch (e) { $('loginMsg').textContent = e.message; }
+};
+
+async function loadCategories() {
+  const cats = await call('/awards/categories');
+  $('aCategory').innerHTML = cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  $('fCategory').innerHTML = '<option value="">All categories</option>' +
+    cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+}
+
+async function loadBoard() {
+  const q = new URLSearchParams();
+  if ($('fEvent').value) q.set('event_id', $('fEvent').value);
+  if ($('fCategory').value) q.set('category_id', $('fCategory').value);
+  try {
+    boardRows = await call('/awards/leaderboard' + (q.toString() ? '?' + q : ''));
+    $('boardBody').innerHTML = boardRows.map((r, i) => `<tr>
+      <td>${esc(r.event_name)}</td><td>${esc(r.award_category)}</td><td>${r.rank_no}</td>
+      <td>${esc(r.participant_name)}</td><td>${esc(r.college_name)}</td>
+      <td>${r.total_score}</td><td>${esc(r.remarks)}</td>
+      <td>${role === 'admin' ? `<button class="light" onclick="editAward(${i})">Edit</button>
+        <button class="danger" onclick="delAward(${r.award_id})">Delete</button>` : ''}</td></tr>`).join('');
+    show('boardMsg', boardRows.length ? `${boardRows.length} row(s)` : 'No awards found.', true);
+  } catch (e) { show('boardMsg', e.message, false); }
+}
+$('loadBoard').onclick = loadBoard;
+
+window.editAward = i => {
+  const r = boardRows[i]; editingId = r.award_id;
+  $('aEvent').value = r.event_id; $('aEvent').disabled = true;   // event cannot change on edit
+  $('aParticipant').value = r.participant_id; $('aCategory').value = r.award_category_id || '';
+  $('aRank').value = r.rank_no; $('aScore').value = r.total_score; $('aRemarks').value = r.remarks || '';
+  $('formTitle').textContent = 'Edit award #' + editingId; $('cancelBtn').classList.remove('hidden');
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+};
+function resetForm() {
+  editingId = null; $('aEvent').disabled = false;
+  ['aEvent','aParticipant','aRank','aScore','aRemarks'].forEach(id => $(id).value = '');
+  $('formTitle').textContent = 'Give an award'; $('cancelBtn').classList.add('hidden');
+}
+$('cancelBtn').onclick = resetForm;
+
+$('saveBtn').onclick = async () => {
+  const body = {
+    event_id: Number($('aEvent').value), participant_id: Number($('aParticipant').value),
+    award_category_id: Number($('aCategory').value), rank_no: Number($('aRank').value),
+    total_score: Number($('aScore').value || 0), remarks: $('aRemarks').value || null,
+  };
+  try {
+    if (editingId) { delete body.event_id; await call('/awards/' + editingId, 'PATCH', body); }
+    else await call('/awards', 'POST', body);
+    show('formMsg', editingId ? 'Award updated.' : 'Award created.', true);
+    resetForm(); await loadBoard();
+  } catch (e) { show('formMsg', e.message, false); }
+};
+
+window.delAward = async id => {
+  if (!confirm('Delete this award?')) return;
+  try { await call('/awards/' + id, 'DELETE'); await loadBoard(); }
+  catch (e) { show('boardMsg', e.message, false); }
+};
+</script>
+</body>
+</html>
