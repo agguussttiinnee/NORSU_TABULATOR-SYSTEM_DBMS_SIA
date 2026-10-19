@@ -10,3 +10,8 @@ ALTER TABLE event_judges
 -- Add yours below, for example:
 -- ALTER TABLE participants ADD CONSTRAINT fk_participants_college
 --   FOREIGN KEY (college_id) REFERENCES colleges(id);
+
+-- Gretchen: awards -> events, participants (Carl's tables)
+ALTER TABLE awards
+  ADD CONSTRAINT fk_awards_event FOREIGN KEY (event_id) REFERENCES events(id),
+  ADD CONSTRAINT fk_awards_participant FOREIGN KEY (participant_id) REFERENCES participants(id);
