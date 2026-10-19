@@ -26,6 +26,8 @@ router.use('/criteria', require('./criteriaRoutes'));
 // router.use('/scores', require('./scoreRoutes'));
 
 // ---- Resty: Workflow + Audit ----
+router.use('/score-submissions', require('./scoreSubmissionRoutes'));
+
 // router.use('/score-revisions', require('./scoreRevisionRoutes'));
 
 // ---- Gretchen: Reports ----
