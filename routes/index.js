@@ -22,6 +22,7 @@ router.use('/venues', require('./venueRoutes'));
 router.use('/events', require('./eventRoutes'));
 
 // ---- Izy: Rules ----
+router.use('/criteria', require('./criteriaRoutes'));
 // router.use('/scores', require('./scoreRoutes'));
 
 // ---- Resty: Workflow + Audit ----
