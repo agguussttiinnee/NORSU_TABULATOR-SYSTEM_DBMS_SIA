@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NORSU Tabulator | Participant registration</title>
+<style>
+:root{color-scheme:light;--navy:#10264d;--blue:#2459a9;--line:#dbe3ef;--muted:#63718a;--bg:#f3f6fb}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 system-ui,sans-serif;color:#18253b;background:var(--bg)}
+header{color:white;background:linear-gradient(120deg,#0d1d3b,#1d4c91);padding:26px max(20px,calc((100% - 1120px)/2))}
+header h1{margin:0 0 4px;font-size:clamp(24px,3vw,34px)}
+header p{margin:0;color:#dbe9ff}
+main{max-width:1120px;margin:22px auto;padding:0 18px 36px}
+.nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.nav a{color:var(--blue);background:white;border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-decoration:none;font-weight:650}
+.grid{display:grid;grid-template-columns:minmax(270px,360px) 1fr;gap:18px;align-items:start}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 6px 24px #152b4c0a}
+h2{margin:0 0 14px;font-size:19px}
+label{display:block;font-size:13px;font-weight:700;margin:11px 0 5px}
+input,select{width:100%;padding:10px 11px;border:1px solid #cbd5e3;border-radius:9px;font:inherit;background:white}
+input:focus,select:focus{outline:3px solid #b9d4ff;border-color:var(--blue)}
+button{border:0;background:var(--blue);color:white;padding:10px 13px;border-radius:9px;cursor:pointer;font:inherit;font-weight:700}
+button.secondary{background:#e8eef8;color:#23436f}
+.muted{color:var(--muted);font-size:13px}
+.notice{padding:10px 12px;border-radius:9px;margin:12px 0;background:#edf4ff;color:#173b76;white-space:pre-wrap}
+.notice.error{background:#fff0f0;color:#8c2028}
+.token-row{display:flex;gap:8px;align-items:end}
+.token-row>div{flex:1}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:680px}
+th,td{padding:10px 9px;text-align:left;border-bottom:1px solid #e8edf5;vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;background:#f8faff}
+.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.token-row{align-items:stretch;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+<h1>NORSU Tabulator System</h1>
+<p>Participant registration · Transactions module</p>
+</header>
+
+<main>
+<nav class="nav">
+<a href="events.html">Events</a>
+<a href="participant-registration.html">Participant registration</a>
+</nav>
+
+<section class="card" style="margin-bottom:18px">
+<h2>Admin API access</h2>
+<p class="muted">Paste the token returned by the shared login endpoint.</p>
+<div class="token-row">
+<div>
+<label for="token">Bearer token</label>
+<input id="token" type="password" autocomplete="off" placeholder="Paste admin token">
+</div>
+<button id="saveToken" type="button">Save token</button>
+</div>
+<div id="notice" class="notice" role="status">Enter an admin token to load events.</div>
+</section>
+
+<div class="grid">
+<section class="card">
+<h2>Register participant</h2>
+<form id="registrationForm">
+<label for="event_id">Event</label>
+<select id="event_id" required>
+<option value="">Load events first</option>
+</select>
+
+<label for="name">Participant or team name</label>
+<input id="name" maxlength="120" required placeholder="Enter candidate or college team name">
+
+<label for="participant_type">Participant type</label>
+<select id="participant_type" required>
+<option value="candidate">Candidate</option>
+<option value="college_team">College team</option>
+</select>
+
+<label for="college_id">College ID</label>
+<input id="college_id" type="number" min="1" step="1" required placeholder="ID from colleges">
+
+<label for="entry_number">Entry number</label>
+<input id="entry_number" maxlength="30" required placeholder="e.g. P-01 or TEAM-03">
+
+<div class="actions">
+<button type="submit">Register participant</button>
+<button type="button" class="secondary" id="refreshRoster">Refresh roster</button>
+</div>
+</form>
+<p class="muted">Event and college IDs must already exist. Registration creates the participant and event entry together.</p>
+</section>
+
+<section class="card">
+<h2 id="rosterTitle">Event roster</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Entry #</th><th>Participant</th><th>Type</th><th>College</th><th>Registered</th></tr>
+</thead>
+<tbody id="rosterBody">
+<tr><td colspan="5" class="muted">Choose an event to load its roster.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+
+<script>
+const API='/api';
+const $=id=>document.getElementById(id);
+$('token').value=localStorage.getItem('norsuToken')||'';
+
+function show(message,isError=false){
+    $('notice').textContent=message;
+    $('notice').classList.toggle('error',isError);
+}
+
+function authHeaders(json=true){
+    const token=$('token').value.trim();
+
+    if(token)localStorage.setItem('norsuToken',token);
+
+    return {
+        ...(json?{'Content-Type':'application/json'}:{}),
+        ...(token?{Authorization:`Bearer ${token}`}:{})
+    };
+}
+
+async function api(path,options={}){
+    const response=await fetch(`${API}${path}`,{
+        ...options,
+        headers:{
+            ...authHeaders(options.body!==undefined),
+            ...(options.headers||{})
+        }
+    });
+
+    let payload;
+    try{payload=await response.json();}
+    catch{throw new Error(`Server returned HTTP ${response.status} without JSON`);}
+
+    if(!response.ok||payload.success===false){
+        throw new Error(payload.message||`Request failed (${response.status})`);
+    }
+
+    return payload.data;
+}
+
+function esc(value){
+    return String(value??'').replace(/[&<>"']/g,c=>({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+}
+
+async function loadEvents(){
+    try{
+        const events=await api('/events');
+        const current=
+            new URLSearchParams(location.search).get('event_id')||
+            $('event_id').value;
+
+        $('event_id').innerHTML=
+            '<option value="">Select an event</option>'+
+            events.map(e=>`<option value="${esc(e.id)}">
+                #${esc(e.id)} · ${esc(e.event_name)} · ${esc(e.event_date)}
+            </option>`).join('');
+
+        if(current&&events.some(e=>String(e.id)===String(current))){
+            $('event_id').value=current;
+        }
+
+        show(`Loaded ${events.length} active event(s).`);
+
+        if($('event_id').value){
+            await loadRoster();
+        }
+    }catch(e){
+        show(`${e.message}\nCheck your admin token, server, and database schema.`,true);
+    }
+}
+
+async function loadRoster(){
+    const id=$('event_id').value;
+
+    if(!id){
+        $('rosterBody').innerHTML=
+            '<tr><td colspan="5" class="muted">Choose an event to load its roster.</td></tr>';
+        $('rosterTitle').textContent='Event roster';
+        return;
+    }
+
+    $('rosterBody').innerHTML=
+        '<tr><td colspan="5" class="muted">Loading roster…</td></tr>';
+
+    try{
+        const rows=await api(`/events/${id}/participants`);
+        $('rosterTitle').textContent=`Event roster · #${id}`;
+
+        $('rosterBody').innerHTML=rows.length
+            ?rows.map(r=>`<tr>
+                <td>${esc(r.entry_number)}</td>
+                <td>${esc(r.participant_name)}</td>
+                <td>${esc(r.participant_type)}</td>
+                <td>${esc(r.college_name)}</td>
+                <td>${esc(r.registered_at)}</td>
+            </tr>`).join('')
+            :'<tr><td colspan="5" class="muted">No participants registered for this event yet.</td></tr>';
+    }catch(e){
+        $('rosterBody').innerHTML=
+            '<tr><td colspan="5" class="muted">Unable to load roster.</td></tr>';
+        show(e.message,true);
+    }
+}
+
+$('saveToken').addEventListener('click',()=>{
+    localStorage.setItem('norsuToken',$('token').value.trim());
+    show('Token saved in this browser.');
+    loadEvents();
+});
+
+$('event_id').addEventListener('change',loadRoster);
+$('refreshRoster').addEventListener('click',loadRoster);
+
+$('registrationForm').addEventListener('submit',async event=>{
+    event.preventDefault();
+
+    const eventId=$('event_id').value;
+
+    if(!eventId){
+        show('Select an event first.',true);
+        return;
+    }
+
+    const payload={
+        name:$('name').value.trim(),
+        participant_type:$('participant_type').value,
+        college_id:Number($('college_id').value),
+        entry_number:$('entry_number').value.trim()
+    };
+
+    try{
+        const result=await api(`/events/${eventId}/participants`,{
+            method:'POST',
+            body:JSON.stringify(payload)
+        });
+
+        show(
+            `Registration created. Participant ID: ${result.participant_id}; entry: ${result.entry_number}.`
+        );
+
+        $('name').value='';
+        $('entry_number').value='';
+
+        await loadRoster();
+    }catch(e){
+        show(e.message,true);
+    }
+});
+
+if($('token').value){
+    loadEvents();
+}
+</script>
+</body>
+</html>
