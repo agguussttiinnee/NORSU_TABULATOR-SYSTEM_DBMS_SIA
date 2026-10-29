@@ -9,6 +9,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use(express.static('public'));
+
 app.use('/api', routes);
 
 // 404 handler
