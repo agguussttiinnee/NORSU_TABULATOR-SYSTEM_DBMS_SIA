@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NORSU Tabulator | Users</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { margin: 0; background: var(--nt-page); color: var(--nt-text); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+    [hidden] { display: none !important; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--nt-line); }
+    th { font-size: 0.8rem; text-transform: uppercase; color: var(--nt-muted); }
+    .table-wrap { overflow-x: auto; }
+    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; background: #eaf1fd; }
+    .msg.error { background: #fdecec; color: #9b1c1c; }
+    .state { text-align: center; color: var(--nt-muted); }
+  </style>
+</head>
+<body>
+  <div id="app-header" data-title="NORSU Tabulator System" data-subtitle="Users management" data-role="admin"></div>
+
+  <main class="nt-main">
+    <div id="message" class="msg" role="alert" hidden></div>
+
+    <section class="nt-card">
+      <h2>Users</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th></tr>
+          </thead>
+          <tbody id="userRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/layout.js"></script>
+  <script>
+    const API = '/api/users';
+    const message = document.getElementById('message');
+    const rows = document.getElementById('userRows');
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'msg error' : 'msg';
+      message.hidden = false;
+    }
+
+    // One place for every request: adds the token and turns errors into readable messages.
+    async function request(url, options) {
+      const response = await fetch(url, Object.assign({
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + NorsuAuth.getToken()
+        }
+      }, options));
+      const body = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        NorsuAuth.logout();
+        throw new Error('Your session expired. Please log in again.');
+      }
+      if (response.status === 403) throw new Error('Only admins can manage users.');
+      if (!response.ok) throw new Error(body.message || 'Request failed (' + response.status + ').');
+
+      return body.data !== undefined ? body.data : body;
+    }
+
+    function cell(text) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      return td;
+    }
+
+    function messageRow(text) {
+      rows.innerHTML = '';
+      const tr = document.createElement('tr');
+      const td = cell(text);
+      td.colSpan = 4;
+      td.className = 'state';
+      tr.appendChild(td);
+      rows.appendChild(tr);
+    }
+
+    function renderRows(users) {
+      rows.innerHTML = '';
+      users.forEach((u) => {
+        const tr = document.createElement('tr');
+        tr.appendChild(cell(u.id));
+        tr.appendChild(cell(u.full_name));
+        tr.appendChild(cell(u.email));
+        tr.appendChild(cell(u.role));
+        rows.appendChild(tr);
+      });
+    }
+
+    async function loadUsers() {
+      messageRow('Loading users...');
+      try {
+        const users = await request(API);
+        if (!users.length) {
+          messageRow('No users yet.');
+          return;
+        }
+        renderRows(users);
+      } catch (err) {
+        messageRow('Could not load users.');
+        showMessage(err.message, true);
+      }
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>
