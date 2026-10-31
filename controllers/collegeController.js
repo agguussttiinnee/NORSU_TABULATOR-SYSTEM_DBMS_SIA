@@ -28,7 +28,7 @@ const create = async (req, res) => {
     return success(res, { id }, 'College created', 201);
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') {
-      return error(res, 'College name or code already exists', 400);
+      return error(res, 'College name or code already exists', 409);
     }
     return error(res, e.message, 500);
   }
@@ -40,10 +40,11 @@ const update = async (req, res) => {
     if (!name || !code) return error(res, 'Name and code are required', 400);
     const affected = await College.update(req.params.id, name.trim(), code.trim());
     if (!affected) return error(res, 'College not found', 404);
-    return success(res, null, 'College updated');
-  } catch (e) {
+    const updated = await College.getById(req.params.id);
+      return success(res, updated, 'College updated');
+      } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') {
-      return error(res, 'College name or code already exists', 400);
+      return error(res, 'College name or code already exists', 409);
     }
     return error(res, e.message, 500);
   }
