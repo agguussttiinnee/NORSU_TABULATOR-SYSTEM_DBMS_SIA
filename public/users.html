@@ -8,6 +8,8 @@
   <style>
     body { margin: 0; background: var(--nt-page); color: var(--nt-text); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
     [hidden] { display: none !important; }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--nt-line); }
     th { font-size: 0.8rem; text-transform: uppercase; color: var(--nt-muted); }
@@ -15,6 +17,11 @@
     .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; background: #eaf1fd; }
     .msg.error { background: #fdecec; color: #9b1c1c; }
     .state { text-align: center; color: var(--nt-muted); }
+    label { display: block; margin: 12px 0 6px; font-weight: 600; font-size: 0.92rem; }
+    input, select { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--nt-line); border-radius: 10px; background: #fff; color: var(--nt-text); }
+    .btn { margin-top: 18px; padding: 10px 16px; font: inherit; font-weight: 700; color: #fff; background: var(--nt-blue); border: 0; border-radius: 10px; cursor: pointer; }
+    .btn:hover { background: var(--nt-blue-dark); }
+    .btn:disabled { opacity: 0.6; cursor: wait; }
   </style>
 </head>
 <body>
@@ -23,17 +30,38 @@
   <main class="nt-main">
     <div id="message" class="msg" role="alert" hidden></div>
 
-    <section class="nt-card">
-      <h2>Users</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th></tr>
-          </thead>
-          <tbody id="userRows"></tbody>
-        </table>
-      </div>
-    </section>
+    <div class="grid">
+      <section class="nt-card">
+        <h2>Add user</h2>
+        <form id="userForm" novalidate>
+          <label for="fullName">Full name</label>
+          <input id="fullName" type="text">
+
+          <label for="email">Email</label>
+          <input id="email" type="email">
+
+          <label for="role">Role</label>
+          <select id="role"></select>
+
+          <label for="password">Password (at least 8 characters)</label>
+          <input id="password" type="password" autocomplete="new-password">
+
+          <button class="btn" id="submitBtn" type="submit">Add user</button>
+        </form>
+      </section>
+
+      <section class="nt-card">
+        <h2>Users</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th></tr>
+            </thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script src="/js/layout.js"></script>
@@ -41,6 +69,12 @@
     const API = '/api/users';
     const message = document.getElementById('message');
     const rows = document.getElementById('userRows');
+    const form = document.getElementById('userForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const nameInput = document.getElementById('fullName');
+    const emailInput = document.getElementById('email');
+    const roleSelect = document.getElementById('role');
+    const passwordInput = document.getElementById('password');
 
     function showMessage(text, isError) {
       message.textContent = text;
@@ -96,6 +130,21 @@
       });
     }
 
+    async function loadRoles() {
+      try {
+        const roles = await request(API + '/roles');
+        roleSelect.innerHTML = '';
+        roles.forEach((r) => {
+          const option = document.createElement('option');
+          option.value = r.id;
+          option.textContent = r.name;
+          roleSelect.appendChild(option);
+        });
+      } catch (err) {
+        showMessage('Could not load roles: ' + err.message, true);
+      }
+    }
+
     async function loadUsers() {
       messageRow('Loading users...');
       try {
@@ -111,6 +160,39 @@
       }
     }
 
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const full_name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!full_name || !email || !roleSelect.value) {
+        showMessage('Fill in the name, email and role.', true);
+        return;
+      }
+      if (password.length < 8) {
+        showMessage('Password must be at least 8 characters.', true);
+        return;
+      }
+
+      submitBtn.disabled = true;
+      try {
+        await request(API, {
+          method: 'POST',
+          body: JSON.stringify({ full_name, email, password, role_id: Number(roleSelect.value) })
+        });
+        showMessage('User created.');
+        form.reset();
+        await loadUsers();
+      } catch (err) {
+        showMessage(err.message, true); // for example 409: Email is already in use
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    loadRoles();
     loadUsers();
   </script>
 </body>
