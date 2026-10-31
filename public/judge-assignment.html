@@ -25,6 +25,7 @@
     .btn.small { margin-top: 0; padding: 6px 12px; font-size: 0.88rem; }
     .btn.danger { background: #b42318; }
     .btn.danger:hover { background: #8f1c12; }
+    .note { margin: 0 0 12px; color: var(--nt-muted); font-size: 0.92rem; }
   </style>
 </head>
 <body>
@@ -59,6 +60,19 @@
         </div>
       </section>
     </div>
+
+    <section class="nt-card">
+      <h2>Judges per event (report)</h2>
+      <p class="note">An INNER join of event_judges, events, users and roles. Events with no judges are not shown.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Event</th><th>Judge</th><th>Email</th><th>Role</th><th>Assigned</th></tr>
+          </thead>
+          <tbody id="reportRows"></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <script src="/js/layout.js"></script>
@@ -73,6 +87,7 @@
     const eventSelect = document.getElementById('eventSelect');
     const judgeSelect = document.getElementById('judgeSelect');
     const assignmentRows = document.getElementById('assignmentRows');
+    const reportRows = document.getElementById('reportRows');
 
     let events = [];
     let judges = [];
@@ -189,6 +204,36 @@
       }
     }
 
+    // Step 6: the INNER join report from GET /api/event-judges/report
+    async function loadReport() {
+      messageRow(reportRows, 5, 'Loading report...');
+      try {
+        const list = await request(API_ASSIGN + '/report');
+        if (!list.length) {
+          messageRow(reportRows, 5, 'No judges assigned yet.');
+          return;
+        }
+        reportRows.innerHTML = '';
+        list.forEach((r) => {
+          const tr = document.createElement('tr');
+          tr.appendChild(cell(r.event_name));
+          tr.appendChild(cell(r.judge_name));
+          tr.appendChild(cell(r.email));
+          tr.appendChild(cell(r.role));
+          tr.appendChild(cell(new Date(r.assigned_at).toLocaleString()));
+          reportRows.appendChild(tr);
+        });
+      } catch (err) {
+        messageRow(reportRows, 5, 'Could not load the report.');
+        showMessage(err.message, true);
+      }
+    }
+
+    async function refreshLists() {
+      await loadAssignments();
+      await loadReport();
+    }
+
     async function removeAssignment(a) {
       const event = findEvent(a.event_id);
       const judge = findJudge(a.user_id);
@@ -197,7 +242,7 @@
       try {
         await request(API_ASSIGN + '/' + a.id, { method: 'DELETE' });
         showMessage('Judge removed from the event.');
-        await loadAssignments();
+        await refreshLists();
       } catch (err) {
         showMessage(err.message, true); // for example 404: Assignment not found
       }
@@ -221,7 +266,7 @@
           })
         });
         showMessage('Judge assigned to the event.');
-        await loadAssignments();
+        await refreshLists();
       } catch (err) {
         showMessage(err.message, true); // 409: already assigned, 400: not a judge or event missing
       } finally {
@@ -235,7 +280,7 @@
       } catch (err) {
         showMessage('Could not load events or judges: ' + err.message, true);
       }
-      loadAssignments();
+      refreshLists();
     }
 
     start();
