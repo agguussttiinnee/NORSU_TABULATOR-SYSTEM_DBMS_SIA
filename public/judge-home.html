@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NORSU Tabulator | My events</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { margin: 0; background: var(--nt-page); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="app-header" data-title="NORSU Tabulator System" data-subtitle="Judge area" data-role="judge"></div>
+
+  <main class="nt-main">
+    <section class="nt-card">
+      <h2 id="welcome">Welcome</h2>
+      <p class="nt-muted">The events you are assigned to will appear here.</p>
+    </section>
+
+    <section class="nt-card">
+      <h2>My events</h2>
+      <p id="eventsStatus" class="nt-muted">No events assigned yet. Your admin assigns judges to events.</p>
+    </section>
+  </main>
+
+  <script src="/js/layout.js"></script>
+  <script>
+    // layout.js has already checked the login and role before this runs.
+    const user = window.NorsuAuth.getUser();
+    if (user) {
+      document.getElementById('welcome').textContent = 'Welcome, ' + (user.full_name || user.email);
+    }
+  </script>
+</body>
+</html>
