@@ -43,3 +43,18 @@ CREATE TABLE IF NOT EXISTS alerts (
     KEY idx_alert_submission (requested_by),
     KEY idx_alert_status (status)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INT NOT NULL AUTO_INCREMENT,
+    user_id INT NOT NULL,              
+    action VARCHAR(50) NOT NULL,
+    table_name VARCHAR(100) NOT NULL,        
+    record_id INT NOT NULL,                 
+    old_value TEXT NULL,
+    new_value TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_audit_user (user_id),
+    KEY idx_audit_table_record (table_name,record_id)
+) ENGINE=InnoDB;
+
