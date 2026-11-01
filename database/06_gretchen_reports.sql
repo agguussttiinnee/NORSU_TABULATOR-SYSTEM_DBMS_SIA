@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS awards (
   is_active TINYINT(1) NOT NULL DEFAULT 1,   -- soft-delete flag
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_award_rank (event_id, award_category_id, rank_no),
+  active_rank_key TINYINT GENERATED ALWAYS AS (IF(is_active = 1, 1, NULL)) STORED,
+  UNIQUE KEY uq_award_rank (event_id, award_category_id, rank_no, active_rank_key),
   CONSTRAINT fk_awards_category FOREIGN KEY (award_category_id) REFERENCES award_categories(id)
 );
 
