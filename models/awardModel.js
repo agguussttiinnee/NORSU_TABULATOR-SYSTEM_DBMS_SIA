@@ -76,6 +76,7 @@ exports.reportLeaderboard = async (eventId = null, categoryId = null) => {
   let sql = `
     SELECT a.id AS award_id,
            ev.id AS event_id, ev.event_name AS event_name,
+           a.award_category_id,
            ac.name AS award_category,
            a.rank_no,
            p.id AS participant_id, p.name AS participant_name,
