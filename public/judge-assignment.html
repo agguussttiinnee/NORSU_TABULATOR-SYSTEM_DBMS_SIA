@@ -100,12 +100,17 @@
 
     // One place for every request: adds the token and turns errors into readable messages.
     async function request(url, options) {
-      const response = await fetch(url, Object.assign({
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + NorsuAuth.getToken()
-        }
-      }, options));
+         let response;
+   try {
+     response = await fetch(url, Object.assign({
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': 'Bearer ' + NorsuAuth.getToken()
+       }
+     }, options));
+   } catch (networkError) {
+     throw new Error('Cannot reach the server. Make sure it is running, then try again.');
+   }
       const body = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
