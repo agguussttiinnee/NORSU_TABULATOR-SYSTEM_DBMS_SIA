@@ -25,7 +25,7 @@ exports.remove = async (id) => {
 exports.reportJudgesPerEvent = async (eventId = null) => {
   let sql = `
     SELECT ej.id AS assignment_id,
-           e.id AS event_id, e.name AS event_name,
+          e.id AS event_id, e.event_name AS event_name,
            u.id AS user_id, u.full_name AS judge_name, u.email,
            r.name AS role,
            ej.assigned_at
