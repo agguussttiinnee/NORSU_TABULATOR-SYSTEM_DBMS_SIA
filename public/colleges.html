@@ -95,6 +95,27 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 </div>
 </section>
 </div>
+<section class="card" style="margin-top:18px">
+<h2>Colleges with no participants in an event</h2>
+<p class="muted">LEFT JOIN report: colleges that have no registered participant in the chosen event.</p>
+<div class="token-row">
+<div>
+<label for="reportEventId">Event ID</label>
+<input id="reportEventId" type="number" min="1" step="1" placeholder="e.g. 1">
+</div>
+<button id="runReport" type="button">Run report</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>ID</th><th>Name</th><th>Code</th></tr>
+</thead>
+<tbody id="reportBody">
+<tr><td colspan="3" class="muted">Enter an event ID and click Run report.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
 </main>
 
 <script>
@@ -234,6 +255,34 @@ $('collegesBody').addEventListener('click',async event=>{
     }
   }
 });
+async function runReport(){
+  const eventId=$('reportEventId').value.trim();
+  if(!eventId){
+    show('Enter an event ID first.',true);
+    return;
+  }
+  $('reportBody').innerHTML=
+    '<tr><td colspan="3" class="muted">Loading report…</td></tr>';
+  try{
+    const rows=await api(`/colleges/report/no-participants?eventId=${encodeURIComponent(eventId)}`);
+    if(!rows.length){
+      $('reportBody').innerHTML=
+        '<tr><td colspan="3" class="muted">Every college has at least one participant in this event.</td></tr>';
+    }else{
+      $('reportBody').innerHTML=rows.map(c=>`<tr>
+        <td>${esc(c.id)}</td>
+        <td><strong>${esc(c.name)}</strong></td>
+        <td>${esc(c.code)}</td>
+      </tr>`).join('');
+    }
+    show(`Report loaded: ${rows.length} college(s) with no participants in event ${eventId}.`);
+  }catch(e){
+    $('reportBody').innerHTML=
+      '<tr><td colspan="3" class="muted">Unable to load report.</td></tr>';
+    show(e.message,true);
+  }
+}
+$('runReport').addEventListener('click',runReport);
 
 if($('token').value)loadColleges();
 </script>
