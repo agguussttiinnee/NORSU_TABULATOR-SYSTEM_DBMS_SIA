@@ -22,3 +22,12 @@ CREATE TABLE IF NOT EXISTS venues (
   location VARCHAR(150),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+INSERT IGNORE INTO event_types (name) VALUES ('Pageant'), ('Hugyawan');
+
+INSERT IGNORE INTO colleges (name, code) VALUES
+  ('College of Arts and Sciences', 'CAS'),
+  ('College of Engineering', 'COE');
+
+INSERT IGNORE INTO venues (name, location) VALUES
+  ('University Gym', 'Main Campus');
