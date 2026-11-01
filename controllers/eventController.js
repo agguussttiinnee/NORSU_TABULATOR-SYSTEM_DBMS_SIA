@@ -55,6 +55,14 @@ async function validReferences(eventTypeId, venueId) {
     return { valid: true };
 }
 
+exports.lookups = async (req, res, next) => {
+    try {
+        return success(res, await Event.findLookups());
+    } catch (e) {
+        next(e);
+    }
+};
+
 exports.list = async (req, res, next) => {
     try {
         return success(res, await Event.findAll());

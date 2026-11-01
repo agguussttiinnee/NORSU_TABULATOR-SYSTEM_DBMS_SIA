@@ -1,0 +1,32 @@
+:root{color-scheme:light;--navy:#10264d;--blue:#2459a9;--line:#dbe3ef;--muted:#63718a;--bg:#f3f6fb}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 system-ui,sans-serif;color:#18253b;background:var(--bg)}
+header{color:white;background:linear-gradient(120deg,#0d1d3b,#1d4c91);padding:26px max(20px,calc((100% - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px}
+header h1{margin:0 0 4px;font-size:clamp(24px,3vw,34px)}
+header p{margin:0;color:#dbe9ff}
+main{max-width:1120px;margin:22px auto;padding:0 18px 36px}
+.nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.nav a{color:var(--blue);background:white;border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-decoration:none;font-weight:650}
+.grid{display:grid;grid-template-columns:minmax(270px,360px) 1fr;gap:18px;align-items:start}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 6px 24px #152b4c0a}
+h2{margin:0 0 14px;font-size:19px}
+label{display:block;font-size:13px;font-weight:700;margin:11px 0 5px}
+input,select{width:100%;padding:10px 11px;border:1px solid #cbd5e3;border-radius:9px;font:inherit;background:white}
+input:focus,select:focus{outline:3px solid #b9d4ff;border-color:var(--blue)}
+button{border:0;background:var(--blue);color:white;padding:10px 13px;border-radius:9px;cursor:pointer;font:inherit;font-weight:700}
+button.secondary{background:#e8eef8;color:#23436f}
+button.danger{background:#a6313a}
+button.small{padding:6px 9px;font-size:13px;margin:2px}
+button:disabled{opacity:.55;cursor:not-allowed}
+.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:13px}
+.notice{padding:10px 12px;border-radius:9px;margin:12px 0;background:#edf4ff;color:#173b76;white-space:pre-wrap}
+.notice.error{background:#fff0f0;color:#8c2028}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:650px}
+th,td{padding:10px 9px;text-align:left;border-bottom:1px solid #e8edf5;vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;background:#f8faff}
+.status{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef2f8;font-size:12px;font-weight:700}
+.inline-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.inline-actions button{margin:0}
+@media(max-width:800px){.grid{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}}
