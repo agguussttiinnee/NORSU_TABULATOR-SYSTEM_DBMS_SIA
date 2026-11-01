@@ -10,9 +10,8 @@
     }
 
     function redirectToLogin() {
-        const returnTo = window.location.pathname + window.location.search + window.location.hash;
-        const separator = LOGIN_PATH.includes('?') ? '&' : '?';
-        window.location.replace(`${LOGIN_PATH}${separator}returnUrl=${encodeURIComponent(returnTo)}`);
+        // The shared login page currently routes administrators to the Events page.
+        window.location.replace(LOGIN_PATH);
     }
 
     function clearSession() {
