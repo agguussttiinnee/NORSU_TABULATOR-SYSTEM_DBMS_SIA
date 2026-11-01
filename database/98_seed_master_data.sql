@@ -1,3 +1,5 @@
+USE norsu_tabulator;
+
 INSERT IGNORE INTO event_types (name) VALUES
  ('Pageant'), ('Hugyawan');
 
