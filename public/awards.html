@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NORSU Tabulator - Awards & Leaderboard</title>
+<link rel="stylesheet" href="/css/app.css">
 <style>
   :root { --navy:#1f3864; --bg:#f4f6fa; --line:#d9deea; --text:#1d2433; }
   * { box-sizing:border-box; }
   body { margin:0; font-family:Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); }
-  header { background:var(--navy); color:#fff; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; }
   main { max-width:1100px; margin:20px auto; padding:0 16px; }
   .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:18px; }
   h2 { margin:0 0 12px; font-size:18px; color:var(--navy); }
@@ -20,29 +20,15 @@
   th { background:var(--navy); color:#fff; text-align:left; padding:8px; }
   td { padding:8px; border-bottom:1px solid var(--line); }
   .msg { font-size:13px; margin-top:6px; min-height:18px; } .err { color:#b3261e; } .ok { color:#1b7a3a; }
+  .hint { font-size:13px; color:#5a6882; margin:0 0 10px; }
   .hidden { display:none; }
 </style>
 </head>
 <body>
-<header>
-  <strong>NORSU Tabulator - Awards &amp; Leaderboard</strong>
-  <span id="who"></span>
-</header>
+<div id="app-header" data-title="Awards" data-subtitle="Awards and leaderboard" data-role="admin"></div>
 
 <main>
-  <!-- Login -->
-  <section class="card" id="loginBox">
-    <h2>Login</h2>
-    <div class="row">
-      <input id="apiUrl" value="http://localhost:3000/api" size="26" title="API base URL">
-      <input id="email" placeholder="Email">
-      <input id="password" type="password" placeholder="Password">
-      <button id="loginBtn">Login</button>
-    </div>
-    <div class="msg err" id="loginMsg"></div>
-  </section>
-
-  <div id="app" class="hidden">
+  <div id="app">
     <!-- Leaderboard: GET /awards/leaderboard (INNER JOIN report) -->
     <section class="card">
       <h2>Leaderboard</h2>
@@ -61,6 +47,7 @@
     <!-- Awards form: POST / PATCH /awards (admin only) -->
     <section class="card" id="formCard">
       <h2 id="formTitle">Give an award</h2>
+      <p class="hint">Scores are entered by hand for now. They will come from the judges' scores once the scores table is connected.</p>
       <div class="row">
         <input id="aEvent" type="number" placeholder="Event ID">
         <input id="aParticipant" type="number" placeholder="Participant ID">
@@ -76,10 +63,12 @@
   </div>
 </main>
 
+<script src="/js/layout.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-let token = '', role = '', editingId = null, boardRows = [];
-const api = () => $('apiUrl').value.replace(/\/$/, '');
+// The shared login page saves the token as norsuToken; layout.js already blocks non-admins.
+let token = localStorage.getItem('norsuToken') || '', role = 'admin', editingId = null, boardRows = [];
+const api = () => '/api';
 
 async function call(path, method = 'GET', body) {
   const res = await fetch(api() + path, {
@@ -87,23 +76,16 @@ async function call(path, method = 'GET', body) {
     headers: { 'Content-Type': 'application/json', ...(token && { Authorization: 'Bearer ' + token }) },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401) {            // session expired or missing: go back to the shared login
+    localStorage.removeItem('norsuToken');
+    window.location.href = '/login.html';
+  }
   const json = await res.json();
   if (!json.success) throw new Error(json.message);
   return json.data;
 }
 const show = (el, text, ok) => { $(el).textContent = text; $(el).className = 'msg ' + (ok ? 'ok' : 'err'); };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-$('loginBtn').onclick = async () => {
-  try {
-    const d = await call('/auth/login', 'POST', { email: $('email').value, password: $('password').value });
-    token = d.token; role = d.user.role;
-    $('who').textContent = `${d.user.full_name} (${role})`;
-    $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden');
-    $('formCard').classList.toggle('hidden', role !== 'admin');
-    await loadCategories(); await loadBoard();
-  } catch (e) { $('loginMsg').textContent = e.message; }
-};
 
 async function loadCategories() {
   const cats = await call('/awards/categories');
@@ -163,6 +145,9 @@ window.delAward = async id => {
   try { await call('/awards/' + id, 'DELETE'); await loadBoard(); }
   catch (e) { show('boardMsg', e.message, false); }
 };
+
+// Load the page data as soon as it opens (the shared login already ran).
+loadCategories().then(loadBoard).catch(e => show('boardMsg', e.message, false));
 </script>
 </body>
 </html>

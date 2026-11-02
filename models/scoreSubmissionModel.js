@@ -92,7 +92,9 @@ const submit = async (id, judgeId) => {
         );
 
         if (assignments.length === 0) {
-            const err = new Error('You do not own this submission');
+            const err = new Error(
+                'You do not own this submission'
+            );
             err.code = 'NOT_OWNER';
             throw err;
         }
@@ -102,13 +104,16 @@ const submit = async (id, judgeId) => {
              SET status = 'locked',
                  submitted_at = NOW(),
                  locked_at = NOW()
-             WHERE id = ? AND event_judge_id = ?
+             WHERE id = ?
+               AND event_judge_id = ?
                AND status = 'draft'`,
             [id, eventJudgeId]
         );
 
         if (result.affectedRows === 0) {
-            const err = new Error('Submission is already locked or submitted');
+            const err = new Error(
+                'Submission is already locked or submitted'
+            );
             err.code = 'ALREADY_SUBMITTED';
             throw err;
         }
