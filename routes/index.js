@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const { success } = require('../utils/response');
@@ -26,8 +25,7 @@ router.use('/scores', require('./scoreRoutes'));
 
 // ---- Resty: Workflow + Audit ----
 router.use('/score-submissions', require('./scoreSubmissionRoutes'));
-
-// router.use('/score-revisions', require('./scoreRevisionRoutes'));
+router.use('/score-revisions', require('./scoreRevisionRoutes'));
 
 // ---- Gretchen: Reports ----
 router.use('/awards', require('./awardRoutes'));
