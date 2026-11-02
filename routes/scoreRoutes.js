@@ -5,6 +5,15 @@ const scoreController = require('../controllers/scoreController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
 router.use(verifyToken);
+
+// Admin-only final rankings
+router.get(
+    '/rankings/:eventId',
+    requireRole('admin'),
+    scoreController.getEventRankings
+);
+
+// Judge-only scoring routes
 router.use(requireRole('judge'));
 
 router.get('/criterion/:criterionId', scoreController.list);

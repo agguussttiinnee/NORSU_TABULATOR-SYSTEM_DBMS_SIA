@@ -221,3 +221,41 @@ exports.update = async (req, res) => {
         return error(res, 'Failed to update score', 500);
     }
 };
+
+exports.getEventRankings = async (req, res) => {
+    try {
+        const eventId = Number(req.params.eventId);
+
+        if (!Number.isInteger(eventId) || eventId <= 0) {
+            return error(res, 'Invalid event ID', 400);
+        }
+
+        const rankings = await scores.getEventRankings(eventId);
+
+        return success(
+            res,
+            rankings,
+            'Event rankings retrieved successfully'
+        );
+
+    } catch (err) {
+        console.error('Get event rankings error:', err);
+
+        const statusCodes = {
+            EVENT_NOT_FOUND: 404,
+            NO_CRITERIA: 400,
+            WEIGHTS_NOT_COMPLETE: 400,
+            INVALID_MAX_SCORE: 400,
+            NO_PARTICIPANTS: 400,
+            NO_JUDGES: 400,
+            JUDGES_NOT_FINISHED: 409,
+            SCORES_INCOMPLETE: 409
+        };
+
+        return error(
+            res,
+            err.message || 'Failed to retrieve event rankings',
+            statusCodes[err.code] || 500
+        );
+    }
+};
