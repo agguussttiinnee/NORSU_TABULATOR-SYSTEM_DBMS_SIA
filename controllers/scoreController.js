@@ -92,15 +92,6 @@ exports.create = async (req, res) => {
             return error(res, 'Criterion not found', 404);
         }
 
-        const isAssigned = await scores.isJudgeAssignedToEvent(
-            judgeId,
-            criterion.event_id
-        );
-
-        if (!isAssigned) {
-            return error(res, 'You are not assigned to this event', 403);
-        }
-
         const isRegistered = await scores.isParticipantRegisteredForEvent(
             participant_id,
             criterion.event_id
@@ -114,16 +105,25 @@ exports.create = async (req, res) => {
             return error(res, 'Score cannot exceed the criterion maximum score', 400);
         }
 
-        const id = await scores.create({
+        const id = await scores.createWithLock({
             judge_id: judgeId,
             participant_id,
             criterion_id,
-            score
+            score,
+            event_id: criterion.event_id
         });
 
         return success(res, { id }, 'Score created successfully', 201);
     } catch (err) {
         console.error('Create score error:', err);
+
+        if (err.code === 'NOT_ASSIGNED') {
+            return error(res, 'You are not assigned to this event', 403);
+        }
+
+        if (err.code === 'SCORE_LOCKED') {
+            return error(res, 'Your scores for this event are already locked', 403);
+        }
 
         if (err.code === 'ER_DUP_ENTRY') {
             return error(res, 'You have already scored this participant for this criterion', 409);
@@ -168,7 +168,7 @@ exports.update = async (req, res) => {
 
         const existing = await scores.findById(id);
 
-        if (!existing || existing.judge_id !== judgeId) {
+        if (!existing || Number(existing.judge_id) !== Number(judgeId)) {
             return error(res, 'Score not found', 404);
         }
 
@@ -176,15 +176,6 @@ exports.update = async (req, res) => {
 
         if (!criterion) {
             return error(res, 'Criterion not found', 404);
-        }
-
-        const isAssigned = await scores.isJudgeAssignedToEvent(
-            judgeId,
-            criterion.event_id
-        );
-
-        if (!isAssigned) {
-            return error(res, 'You are not assigned to this event', 403);
         }
 
         const isRegistered = await scores.isParticipantRegisteredForEvent(
@@ -200,7 +191,12 @@ exports.update = async (req, res) => {
             return error(res, 'Score cannot exceed the criterion maximum score', 400);
         }
 
-        const affectedRows = await scores.update(id, score);
+        const affectedRows = await scores.updateWithLock({
+            id,
+            judge_id: judgeId,
+            event_id: criterion.event_id,
+            score
+        });
 
         if (!affectedRows) {
             return error(res, 'No changes were made', 400);
@@ -209,6 +205,19 @@ exports.update = async (req, res) => {
         return success(res, null, 'Score updated successfully');
     } catch (err) {
         console.error('Update score error:', err);
-        return error(res, 'Failed to update score');
+
+        if (err.code === 'NOT_ASSIGNED') {
+            return error(res, 'You are not assigned to this event', 403);
+        }
+
+        if (err.code === 'SCORE_LOCKED') {
+            return error(res, 'Your scores for this event are already locked', 403);
+        }
+
+        if (err.code === 'SCORE_NOT_FOUND') {
+            return error(res, 'Score not found', 404);
+        }
+
+        return error(res, 'Failed to update score', 500);
     }
 };
