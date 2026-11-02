@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -33,23 +34,38 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 </style>
 </head>
 <body>
-<div id="app-header" data-title="NORSU Tabulator System" data-subtitle="Events management · Transactions module" data-role="admin"></div>
+
+<div id="app-header"
+     data-title="NORSU Tabulator System"
+     data-subtitle="Events management · Transactions module"
+     data-role="admin"></div>
 
 <main>
-<div id="notice" class="notice" role="status">Checking your administrator session…</div>
+<div id="notice" class="notice" role="status">
+Checking your administrator session…
+</div>
+
 <div class="grid">
+
 <section class="card">
 <h2 id="formTitle">Create event</h2>
+
 <form id="eventForm">
 <input id="eventId" type="hidden">
+
 <label for="event_name">Event name</label>
-<input id="event_name" maxlength="100" required placeholder="e.g. NORSU College Pageant">
+<input id="event_name" maxlength="100" required
+       placeholder="e.g. NORSU College Pageant">
 
 <label for="event_type_id">Event type</label>
-<select id="event_type_id" required><option value="">Loading event types…</option></select>
+<select id="event_type_id" required>
+<option value="">Loading event types…</option>
+</select>
 
 <label for="venue_id">Venue</label>
-<select id="venue_id" required><option value="">Loading venues…</option></select>
+<select id="venue_id" required>
+<option value="">Loading venues…</option>
+</select>
 
 <label for="event_date">Event date and time</label>
 <input id="event_date" type="datetime-local" required>
@@ -64,169 +80,511 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 
 <div class="actions">
 <button type="submit" id="submitEvent">Create event</button>
-<button type="button" class="secondary" id="cancelEdit" hidden>Cancel edit</button>
-<button type="button" class="secondary" id="refresh">Refresh list</button>
+<button type="button" class="secondary" id="cancelEdit" hidden>
+Cancel edit
+</button>
+<button type="button" class="secondary" id="refresh">
+Refresh list
+</button>
 </div>
-<p class="muted">Event type and venue options are loaded from the shared master-data lookup endpoint.</p>
+
+<p class="muted">
+Event type and venue options are loaded from the shared
+master-data lookup endpoint.
+</p>
 </form>
 </section>
 
 <section class="card">
 <h2>Active events</h2>
+
 <div class="table-wrap">
 <table>
-<thead><tr><th>ID</th><th>Event</th><th>Type</th><th>Venue</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-<tbody id="eventsBody"><tr><td colspan="7" class="muted">Events have not been loaded yet.</td></tr></tbody>
+<thead>
+<tr>
+<th>ID</th>
+<th>Event</th>
+<th>Type</th>
+<th>Venue</th>
+<th>Date (Philippine Time)</th>
+<th>Status</th>
+<th>Actions</th>
+</tr>
+</thead>
+
+<tbody id="eventsBody">
+<tr>
+<td colspan="7" class="muted">
+Events have not been loaded yet.
+</td>
+</tr>
+</tbody>
 </table>
 </div>
 </section>
+
 </div>
 </main>
 
 <script src="/js/layout.js"></script>
 <script src="/js/transaction-auth.js"></script>
+
 <script>
 'use strict';
+
 const $ = id => document.getElementById(id);
 const api = window.NorsuTransaction.api;
-let lookups = { eventTypes: [], venues: [], colleges: [] };
+
+let lookups = {
+    eventTypes: [],
+    venues: [],
+    colleges: []
+};
+
+/* =========================================
+   MESSAGE DISPLAY
+========================================= */
 
 function show(message, isError = false) {
     $('notice').textContent = message;
     $('notice').classList.toggle('error', isError);
 }
 
+/* =========================================
+   HTML ESCAPING
+========================================= */
+
 function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
     }[character]));
 }
 
-function mysqlToInput(value) {
-    return value ? String(value).replace(' ', 'T').slice(0, 16) : '';
+/* =========================================
+   PHILIPPINE DATE AND TIME FORMATTER
+   Timezone: Asia/Manila (UTC+8)
+========================================= */
+
+function formatEventDatePH(value) {
+
+    if (!value) return '';
+
+    const raw = String(value).trim();
+
+    // Check whether the timestamp contains an explicit timezone.
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+
+    // UTC timestamps are converted into Philippine time.
+    if (hasTimezone) {
+
+        const date = new Date(raw);
+
+        if (Number.isNaN(date.getTime())) {
+            return raw;
+        }
+
+        return new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'Asia/Manila',
+            year: 'numeric',
+            month: 'long',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        }).format(date);
+    }
+
+    // MySQL DATETIME has no timezone information.
+    // Preserve its stored date and clock time.
+    const match = raw.match(
+        /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
+    );
+
+    if (match) {
+
+        const [
+            ,
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second = '00'
+        ] = match;
+
+        const date = new Date(Date.UTC(
+            Number(year),
+            Number(month) - 1,
+            Number(day),
+            Number(hour),
+            Number(minute),
+            Number(second)
+        ));
+
+        if (
+            date.getUTCFullYear() !== Number(year) ||
+            date.getUTCMonth() !== Number(month) - 1 ||
+            date.getUTCDate() !== Number(day)
+        ) {
+            return raw;
+        }
+
+        return new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'UTC',
+            year: 'numeric',
+            month: 'long',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        }).format(date);
+    }
+
+    return raw;
 }
+
+/* =========================================
+   MYSQL DATETIME TO INPUT FORMAT
+========================================= */
+
+function mysqlToInput(value) {
+    return value
+        ? String(value).replace(' ', 'T').slice(0, 16)
+        : '';
+}
+
+/* =========================================
+   DROPDOWN MANAGEMENT
+========================================= */
 
 function fillSelect(id, rows, placeholder, selectedValue = '') {
-    const select = $(id);
-    select.innerHTML = `<option value="">${esc(placeholder)}</option>` + rows.map(row =>
-        `<option value="${esc(row.id)}">${esc(row.name)}</option>`
-    ).join('');
-    if (selectedValue !== '') select.value = String(selectedValue);
-}
 
-async function loadLookups() {
-    lookups = await api('/events/lookups');
-    fillSelect('event_type_id', lookups.eventTypes || [], 'Select an event type');
-    fillSelect('venue_id', lookups.venues || [], 'Select a venue');
-    if (!lookups.eventTypes?.length || !lookups.venues?.length) {
-        show('Master data is empty. Add event types and venues before creating events.', true);
+    const select = $(id);
+
+    select.innerHTML =
+        `<option value="">${esc(placeholder)}</option>` +
+        rows.map(row =>
+            `<option value="${esc(row.id)}">${esc(row.name)}</option>`
+        ).join('');
+
+    if (selectedValue !== '') {
+        select.value = String(selectedValue);
     }
 }
 
+/* =========================================
+   LOAD MASTER DATA
+========================================= */
+
+async function loadLookups() {
+
+    lookups = await api('/events/lookups');
+
+    fillSelect(
+        'event_type_id',
+        lookups.eventTypes || [],
+        'Select an event type'
+    );
+
+    fillSelect(
+        'venue_id',
+        lookups.venues || [],
+        'Select a venue'
+    );
+
+    if (
+        !lookups.eventTypes?.length ||
+        !lookups.venues?.length
+    ) {
+        show(
+            'Master data is empty. Add event types and venues before creating events.',
+            true
+        );
+    }
+}
+
+/* =========================================
+   RESET EVENT FORM
+========================================= */
+
 function resetForm() {
+
     $('eventForm').reset();
+
     $('eventId').value = '';
+
     $('formTitle').textContent = 'Create event';
+
     $('submitEvent').textContent = 'Create event';
+
     $('cancelEdit').hidden = true;
 }
 
+/* =========================================
+   LOAD EVENTS
+========================================= */
+
 async function loadEvents() {
-    $('eventsBody').innerHTML = '<tr><td colspan="7" class="muted">Loading events…</td></tr>';
+
+    $('eventsBody').innerHTML =
+        '<tr><td colspan="7" class="muted">Loading events…</td></tr>';
+
     try {
+
         const events = await api('/events');
+
         if (!events.length) {
-            $('eventsBody').innerHTML = '<tr><td colspan="7" class="muted">No active events found.</td></tr>';
+
+            $('eventsBody').innerHTML =
+                '<tr><td colspan="7" class="muted">No active events found.</td></tr>';
+
         } else {
-            const typeNames = new Map((lookups.eventTypes || []).map(item => [String(item.id), item.name]));
-            const venueNames = new Map((lookups.venues || []).map(item => [String(item.id), item.name]));
-            $('eventsBody').innerHTML = events.map(item => `<tr>
-                <td>${esc(item.id)}</td>
-                <td><strong>${esc(item.event_name)}</strong></td>
-                <td>${esc(typeNames.get(String(item.event_type_id)) || `ID ${item.event_type_id}`)}</td>
-                <td>${esc(venueNames.get(String(item.venue_id)) || `ID ${item.venue_id}`)}</td>
-                <td>${esc(item.event_date)}</td>
-                <td><span class="status">${esc(item.status)}</span></td>
-                <td>
-                    <button class="small secondary" type="button" data-edit="${esc(item.id)}">Edit</button>
-                    <button class="small danger" type="button" data-delete="${esc(item.id)}">Deactivate</button>
-                    <a href="/participant-registration.html?event_id=${encodeURIComponent(item.id)}">Register</a>
-                </td>
-            </tr>`).join('');
+
+            const typeNames = new Map(
+                (lookups.eventTypes || []).map(item => [
+                    String(item.id),
+                    item.name
+                ])
+            );
+
+            const venueNames = new Map(
+                (lookups.venues || []).map(item => [
+                    String(item.id),
+                    item.name
+                ])
+            );
+
+            $('eventsBody').innerHTML = events.map(item => `
+
+                <tr>
+
+                    <td>${esc(item.id)}</td>
+
+                    <td>
+                        <strong>${esc(item.event_name)}</strong>
+                    </td>
+
+                    <td>
+                        ${esc(
+                            typeNames.get(String(item.event_type_id))
+                            || `ID ${item.event_type_id}`
+                        )}
+                    </td>
+
+                    <td>
+                        ${esc(
+                            venueNames.get(String(item.venue_id))
+                            || `ID ${item.venue_id}`
+                        )}
+                    </td>
+
+                    <td>
+                        ${esc(formatEventDatePH(item.event_date))}
+                    </td>
+
+                    <td>
+                        <span class="status">
+                            ${esc(item.status)}
+                        </span>
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="small secondary"
+                            type="button"
+                            data-edit="${esc(item.id)}">
+                            Edit
+                        </button>
+
+                        <button
+                            class="small danger"
+                            type="button"
+                            data-delete="${esc(item.id)}">
+                            Deactivate
+                        </button>
+
+                        <a href="/participant-registration.html?event_id=${encodeURIComponent(item.id)}">
+                            Register
+                        </a>
+
+                    </td>
+
+                </tr>
+
+            `).join('');
         }
+
         show(`Loaded ${events.length} active event(s).`);
+
     } catch (error) {
-        $('eventsBody').innerHTML = '<tr><td colspan="7" class="muted">Unable to load events.</td></tr>';
-        show(`${error.message}\nCheck the API, database, and administrator account.`, true);
+
+        $('eventsBody').innerHTML =
+            '<tr><td colspan="7" class="muted">Unable to load events.</td></tr>';
+
+        show(
+            `${error.message}\nCheck the API, database, and administrator account.`,
+            true
+        );
     }
 }
 
+/* =========================================
+   CREATE AND UPDATE EVENTS
+========================================= */
+
 $('eventForm').addEventListener('submit', async event => {
+
     event.preventDefault();
+
     const id = $('eventId').value;
+
     const payload = {
+
         event_name: $('event_name').value.trim(),
+
         event_type_id: Number($('event_type_id').value),
+
         venue_id: Number($('venue_id').value),
+
         event_date: $('event_date').value,
+
         status: $('status').value
     };
+
     try {
-        await api(id ? `/events/${id}` : '/events', {
-            method: id ? 'PATCH' : 'POST',
-            body: JSON.stringify(payload)
-        });
+
+        await api(
+            id ? `/events/${id}` : '/events',
+            {
+                method: id ? 'PATCH' : 'POST',
+                body: JSON.stringify(payload)
+            }
+        );
+
         show(id ? 'Event updated.' : 'Event created.');
+
         resetForm();
+
         await loadEvents();
+
     } catch (error) {
+
         show(error.message, true);
     }
 });
+
+/* =========================================
+   EDIT AND DEACTIVATE EVENTS
+========================================= */
 
 $('eventsBody').addEventListener('click', async event => {
+
     const editButton = event.target.closest('[data-edit]');
+
     const deleteButton = event.target.closest('[data-delete]');
+
     if (editButton) {
+
         try {
-            const item = await api(`/events/${editButton.dataset.edit}`);
+
+            const item = await api(
+                `/events/${editButton.dataset.edit}`
+            );
+
             $('eventId').value = item.id;
+
             $('event_name').value = item.event_name;
-            $('event_type_id').value = String(item.event_type_id);
-            $('venue_id').value = String(item.venue_id);
-            $('event_date').value = mysqlToInput(item.event_date);
+
+            $('event_type_id').value =
+                String(item.event_type_id);
+
+            $('venue_id').value =
+                String(item.venue_id);
+
+            $('event_date').value =
+                mysqlToInput(item.event_date);
+
             $('status').value = item.status;
-            $('formTitle').textContent = `Edit event #${item.id}`;
+
+            $('formTitle').textContent =
+                `Edit event #${item.id}`;
+
             $('submitEvent').textContent = 'Save changes';
+
             $('cancelEdit').hidden = false;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+
         } catch (error) {
+
             show(error.message, true);
         }
     }
-    if (deleteButton && confirm(`Deactivate event #${deleteButton.dataset.delete}? Existing registrations will remain.`)) {
+
+    if (
+        deleteButton &&
+        confirm(
+            `Deactivate event #${deleteButton.dataset.delete}? Existing registrations will remain.`
+        )
+    ) {
+
         try {
-            await api(`/events/${deleteButton.dataset.delete}`, { method: 'DELETE' });
-            show(`Event #${deleteButton.dataset.delete} deactivated.`);
+
+            await api(
+                `/events/${deleteButton.dataset.delete}`,
+                { method: 'DELETE' }
+            );
+
+            show(
+                `Event #${deleteButton.dataset.delete} deactivated.`
+            );
+
             await loadEvents();
+
         } catch (error) {
+
             show(error.message, true);
         }
     }
 });
 
+/* =========================================
+   BUTTON EVENTS
+========================================= */
+
 $('cancelEdit').addEventListener('click', resetForm);
+
 $('refresh').addEventListener('click', loadEvents);
 
+/* =========================================
+   INITIALIZE PAGE
+========================================= */
+
 (async function start() {
+
     try {
+
         await window.NorsuTransaction.requireAdmin();
+
         await loadLookups();
+
         await loadEvents();
+
     } catch (error) {
+
         show(error.message, true);
     }
+
 })();
+
 </script>
 </body>
 </html>
