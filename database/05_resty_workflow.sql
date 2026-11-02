@@ -31,19 +31,6 @@ CREATE TABLE IF NOT EXISTS score_revisions (
     KEY idx_revision_status (status)
 ) ENGINE=InnoDB;
 
-CREATE TABLE IF NOT EXISTS alerts (
-    id INT NOT NULL AUTO_INCREMENT,
-    requested_by INT NOT NULL,          
-    message VARCHAR(255) NOT NULL,
-    status ENUM('new', 'reviewed', 'dismissed') NOT NULL DEFAULT 'new',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    KEY idx_alert_submission (requested_by),
-    KEY idx_alert_status (status)
-) ENGINE=InnoDB;
-
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INT NOT NULL AUTO_INCREMENT,
     user_id INT NOT NULL,              
