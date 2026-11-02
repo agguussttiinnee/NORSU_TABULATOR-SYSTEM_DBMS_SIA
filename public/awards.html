@@ -29,6 +29,21 @@
 
 <main>
   <div id="app">
+    <!-- Final rankings: GET /scores/rankings/:eventId (Izy) + roster names (Carl) -->
+    <section class="card">
+      <h2>Final rankings</h2>
+      <p class="hint">Computed from the judges' locked scores. Available after every assigned judge has locked their submission.</p>
+      <div class="row">
+        <input id="rEvent" type="number" placeholder="Event ID">
+        <button id="loadRankings">Load rankings</button>
+      </div>
+      <table>
+        <thead><tr><th>Rank</th><th>Entry</th><th>Participant</th><th>College</th><th>Total</th><th>Tie status</th><th></th></tr></thead>
+        <tbody id="rankBody"></tbody>
+      </table>
+      <div class="msg" id="rankMsg"></div>
+    </section>
+
     <!-- Leaderboard: GET /awards/leaderboard (INNER JOIN report) -->
     <section class="card">
       <h2>Leaderboard</h2>
@@ -47,7 +62,7 @@
     <!-- Awards form: POST / PATCH /awards (admin only) -->
     <section class="card" id="formCard">
       <h2 id="formTitle">Give an award</h2>
-      <p class="hint">Scores are entered by hand for now. They will come from the judges' scores once the scores table is connected.</p>
+      <p class="hint">Use "Give award" in the rankings table to fill participant, rank and total from the judges' scores.</p>
       <div class="row">
         <input id="aEvent" type="number" placeholder="Event ID">
         <input id="aParticipant" type="number" placeholder="Participant ID">
@@ -67,7 +82,7 @@
 <script>
 const $ = id => document.getElementById(id);
 // The shared login page saves the token as norsuToken; layout.js already blocks non-admins.
-let token = localStorage.getItem('norsuToken') || '', role = 'admin', editingId = null, boardRows = [];
+let token = localStorage.getItem('norsuToken') || '', role = 'admin', editingId = null, boardRows = [], rankRows = [];
 const api = () => '/api';
 
 async function call(path, method = 'GET', body) {
@@ -94,6 +109,46 @@ async function loadCategories() {
     cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
 
+// ----- Final rankings (Izy's endpoint) with names from Carl's roster -----
+async function loadRankings() {
+  const eventId = Number($('rEvent').value);
+  if (!eventId) { show('rankMsg', 'Enter an event ID.', false); return; }
+  try {
+    const [rankings, roster] = await Promise.all([
+      call('/scores/rankings/' + eventId),
+      call('/events/' + eventId + '/participants'),
+    ]);
+    const byEntry = {};
+    roster.forEach(r => { byEntry[r.entry_number] = r; });
+    rankRows = rankings
+      .map(r => {
+        const p = byEntry[r.entry_number] || {};
+        return { ...r, event_id: eventId, name: p.participant_name || '', college: p.college_name || '' };
+      })
+      .sort((a, b) => a.rank - b.rank);
+    $('rankBody').innerHTML = rankRows.map((r, i) => `<tr>
+      <td>${r.rank}</td><td>${esc(r.entry_number)}</td><td>${esc(r.name)}</td><td>${esc(r.college)}</td>
+      <td>${Number(r.total_score).toFixed(2)}</td><td>${esc(r.tie_break_status)}</td>
+      <td><button class="light" onclick="giveAward(${i})">Give award</button></td></tr>`).join('');
+    show('rankMsg', rankRows.length ? `${rankRows.length} participant(s) ranked` : 'No rankings found.', true);
+  } catch (e) {
+    $('rankBody').innerHTML = '';
+    show('rankMsg', e.message, false);
+  }
+}
+$('loadRankings').onclick = loadRankings;
+
+// Fill the award form from a ranking row; the admin only picks the category and saves.
+window.giveAward = i => {
+  const r = rankRows[i];
+  resetForm();
+  $('aEvent').value = r.event_id; $('aParticipant').value = r.participant_id;
+  $('aRank').value = r.rank; $('aScore').value = Number(r.total_score).toFixed(2);
+  show('formMsg', 'Pick an award category, then click Save award.', true);
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+};
+
+// ----- Leaderboard of saved awards -----
 async function loadBoard() {
   const q = new URLSearchParams();
   if ($('fEvent').value) q.set('event_id', $('fEvent').value);
