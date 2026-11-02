@@ -19,11 +19,11 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 
 | | Carl | Bernadette | Gretchen | Montessa | Izy | Resty |
 |---|---|---|---|---|---|---|
-| **Tables** | | | | `roles`, `users`, `event_judges` | | |
-| **Endpoints** | | | | `/api/auth`, `/api/users`, `/api/event-judges` | | |
-| **Screens** | | | | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | |
+| **Tables** | | | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | |
+| **Endpoints** | | | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | | |
+| **Screens** | | | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | |
 | **Shared files** | | | | `public/js/layout.js`, `public/css/app.css` | | |
-| **Join report** | | | | `GET /api/event-judges/report` (INNER join) | | |
+| **Join report** | | | `GET /api/awards/leaderboard` (INNER join) | `GET /api/event-judges/report` (INNER join) | | |
 | **Progress** | | | | | | |
 
 
@@ -43,6 +43,14 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 | `POST /api/event-judges` | admin | Assigns a judge to an event |
 | `DELETE /api/event-judges/:id` | admin | Removes an assignment |
 | `GET /api/event-judges/report` | admin | Judges per event (INNER join of `event_judges`, `events`, `users` and `roles`) |
+| `GET /api/awards/leaderboard` | admin, judge | Leaderboard rows with participant, college and event (INNER join of `awards`, `award_categories`, `events`, `participants` and `colleges`) |
+| `GET /api/awards/categories` | admin, judge | Lists award categories |
+| `POST /api/awards/categories` | admin | Adds an award category |
+| `GET /api/awards` | admin, judge | Lists awards (optional `event_id`) |
+| `GET /api/awards/:id` | admin, judge | Returns one award |
+| `POST /api/awards` | admin | Creates an award (the rank must be free for that event and category) |
+| `PUT` or `PATCH /api/awards/:id` | admin | Updates an award; every field is optional |
+| `DELETE /api/awards/:id` | admin | Soft-deletes an award; its rank can be used again |
 
 Status codes used: `400` bad input, `401` missing or expired token, `403` not an admin, `404` not found, `409` duplicate (email already used, or judge already assigned), `201` created.
 
@@ -54,6 +62,7 @@ Status codes used: `400` bad input, `401` missing or expired token, `403` not an
 | `/judge-home.html` | judge | Judge landing page |
 | `/users.html` | admin | List, add, edit and delete users |
 | `/judge-assignment.html` | admin | Assign and remove judges, and shows the judges-per-event report |
+| `/awards.html` | admin | Shows the leaderboard and lets you add, edit and delete awards |
 
 ### Shared layout
 
