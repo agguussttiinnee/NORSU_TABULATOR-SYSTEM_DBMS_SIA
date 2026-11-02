@@ -11,7 +11,11 @@ const getAll = async (req, res) => {
         } else if (req.user.role === 'judge') {
             data = await Submission.getAllByJudge(req.user.id);
         } else {
-            return error(res, 'You do not have permission to view submissions', 403);
+            return error(
+                res,
+                'You do not have permission to view submissions',
+                403
+            );
         }
 
         return success(res, data, 'Submissions retrieved');
@@ -39,7 +43,11 @@ const getById = async (req, res) => {
             req.user.role !== 'admin' &&
             Number(submission.user_id) !== Number(req.user.id)
         ) {
-            return error(res, 'You do not have permission to view this submission', 403);
+            return error(
+                res,
+                'You do not have permission to view this submission',
+                403
+            );
         }
 
         return success(res, submission, 'Submission retrieved');
@@ -58,13 +66,24 @@ const create = async (req, res) => {
         }
 
         if (req.user.role !== 'judge') {
-            return error(res, 'Only judges can create their submissions', 403);
+            return error(
+                res,
+                'Only judges can create their submissions',
+                403
+            );
         }
 
-        const id = await Submission.create(eventJudgeId, req.user.id);
+        const id = await Submission.create(
+            eventJudgeId,
+            req.user.id
+        );
 
         if (!id) {
-            return error(res, 'You are not assigned to this event', 403);
+            return error(
+                res,
+                'You are not assigned to this event',
+                403
+            );
         }
 
         return success(res, { id }, 'Submission created', 201);
@@ -72,7 +91,11 @@ const create = async (req, res) => {
         console.error('Create submission error:', err);
 
         if (err.code === 'ER_DUP_ENTRY') {
-            return error(res, 'This judge already has a submission for this event', 409);
+            return error(
+                res,
+                'This judge already has a submission for this event',
+                409
+            );
         }
 
         if (err.code === 'ER_NO_REFERENCED_ROW_2') {
@@ -92,14 +115,22 @@ const submit = async (req, res) => {
         }
 
         if (req.user.role !== 'judge') {
-            return error(res, 'Only judges can submit their scores', 403);
+            return error(
+                res,
+                'Only judges can submit their scores',
+                403
+            );
         }
 
         await Submission.submit(id, req.user.id);
 
         const updated = await Submission.getById(id);
 
-        return success(res, updated, 'Submission submitted and locked');
+        return success(
+            res,
+            updated,
+            'Submission submitted and locked'
+        );
     } catch (err) {
         console.error('Submit scores error:', err);
 
@@ -108,11 +139,19 @@ const submit = async (req, res) => {
         }
 
         if (err.code === 'NOT_OWNER') {
-            return error(res, 'You do not own this submission', 403);
+            return error(
+                res,
+                'You do not own this submission',
+                403
+            );
         }
 
         if (err.code === 'ALREADY_SUBMITTED') {
-            return error(res, 'Submission is already locked or submitted', 409);
+            return error(
+                res,
+                'Submission is already locked or submitted',
+                409
+            );
         }
 
         return error(res, 'Failed to submit scores', 500);
@@ -134,13 +173,21 @@ const remove = async (req, res) => {
         }
 
         if (submission.status !== 'draft') {
-            return error(res, 'Submitted or locked submissions cannot be deleted', 403);
+            return error(
+                res,
+                'Submitted or locked submissions cannot be deleted',
+                403
+            );
         }
 
         const affectedRows = await Submission.remove(id);
 
         if (!affectedRows) {
-            return error(res, 'Submission could not be deleted', 409);
+            return error(
+                res,
+                'Submission could not be deleted',
+                409
+            );
         }
 
         return success(res, null, 'Submission deleted');
@@ -150,4 +197,10 @@ const remove = async (req, res) => {
     }
 };
 
-module.exports = { getAll, getById, create, submit, remove };
+module.exports = {
+    getAll,
+    getById,
+    create,
+    submit,
+    remove
+};

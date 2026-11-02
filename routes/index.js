@@ -1,9 +1,11 @@
-// Main router. Each member adds ONE line for their own route file.
+
 const express = require('express');
 const router = express.Router();
 const { success } = require('../utils/response');
 
-router.get('/health', (req, res) => success(res, { status: 'running' }, 'API is up'));
+router.get('/health', (req, res) =>
+    success(res, { status: 'running' }, 'API is up')
+);
 
 // ---- Montessa: Core ----
 router.use('/auth', require('./authRoutes'));
@@ -16,7 +18,6 @@ router.use('/event-types', require('./eventTypeRoutes'));
 router.use('/venues', require('./venueRoutes'));
 
 // ---- Carl: Transactions ----
-// router.use('/events', require('./eventRoutes'));
 router.use('/events', require('./eventRoutes'));
 
 // ---- Izy: Rules ----
@@ -25,6 +26,7 @@ router.use('/scores', require('./scoreRoutes'));
 
 // ---- Resty: Workflow + Audit ----
 router.use('/score-submissions', require('./scoreSubmissionRoutes'));
+
 // router.use('/score-revisions', require('./scoreRevisionRoutes'));
 
 // ---- Gretchen: Reports ----
