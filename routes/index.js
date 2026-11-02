@@ -14,8 +14,6 @@ router.use('/event-judges', require('./eventJudgeRoutes'));
 router.use('/colleges', require('./collegeRoutes'));
 router.use('/event-types', require('./eventTypeRoutes'));
 router.use('/venues', require('./venueRoutes'));
-router.use('/event-types', require('./eventTypeRoutes'));
-router.use('/venues', require('./venueRoutes'));
 
 // ---- Carl: Transactions ----
 // router.use('/events', require('./eventRoutes'));
@@ -23,7 +21,7 @@ router.use('/events', require('./eventRoutes'));
 
 // ---- Izy: Rules ----
 router.use('/criteria', require('./criteriaRoutes'));
-// router.use('/scores', require('./scoreRoutes'));
+router.use('/scores', require('./scoreRoutes'));
 
 // ---- Resty: Workflow + Audit ----
 // router.use('/score-revisions', require('./scoreRevisionRoutes'));
