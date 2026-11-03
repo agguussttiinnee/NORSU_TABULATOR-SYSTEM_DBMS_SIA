@@ -43,3 +43,21 @@ exports.reportJudgesPerEvent = async (eventId = null) => {
   const [rows] = await db.query(sql, params);
   return rows;
 };
+// Events assigned to one judge (INNER JOIN with events, event_types and venues)
+exports.findByJudge = async (userId) => {
+  const [rows] = await db.query(
+    `SELECT ej.id AS assignment_id,
+            e.id AS event_id, e.event_name, e.event_date, e.status,
+            t.name AS event_type,
+            v.name AS venue_name,
+            ej.assigned_at
+     FROM event_judges ej
+     INNER JOIN events e ON e.id = ej.event_id
+     INNER JOIN event_types t ON t.id = e.event_type_id
+     INNER JOIN venues v ON v.id = e.venue_id
+     WHERE ej.user_id = ? AND e.is_active = 1
+     ORDER BY e.event_date`,
+    [userId]
+  );
+  return rows;
+};
