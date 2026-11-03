@@ -23,5 +23,6 @@ router.post('/', criteria.create);
 // Update a criterion.
 router.put('/:id', criteria.update);
 router.patch('/:id', criteria.update);
+router.delete('/:id', criteria.remove);
 
 module.exports = router;

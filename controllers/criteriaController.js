@@ -205,3 +205,35 @@ exports.totalWeight = async (req, res) => {
         return error(res, 'Failed to calculate criteria weight');
     }
 };
+
+exports.remove = async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return error(res, 'Invalid criterion ID', 400);
+        }
+
+        const existing = await criteria.findById(id);
+
+        if (!existing) {
+            return error(res, 'Criterion not found', 404);
+        }
+
+        const affectedRows = await criteria.delete(id);
+
+        if (!affectedRows) {
+            return error(
+                res,
+                'Cannot delete criterion because scores already exist',
+                409
+            );
+        }
+
+        return success(res, null, 'Criterion deleted successfully');
+
+    } catch (err) {
+        console.error('Delete criterion error:', err);
+        return error(res, 'Failed to delete criterion', 500);
+    }
+};

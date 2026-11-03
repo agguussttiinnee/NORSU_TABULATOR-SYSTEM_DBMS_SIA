@@ -207,3 +207,18 @@ exports.getTotalWeight = async (eventId) => {
 
     return Number(rows[0].total_weight);
 };
+
+exports.delete = async (id) => {
+    const [result] = await db.query(
+        `DELETE FROM criteria
+         WHERE id = ?
+         AND NOT EXISTS (
+             SELECT 1
+             FROM scores
+             WHERE scores.criterion_id = criteria.id
+         )`,
+        [id]
+    );
+
+    return result.affectedRows;
+};
