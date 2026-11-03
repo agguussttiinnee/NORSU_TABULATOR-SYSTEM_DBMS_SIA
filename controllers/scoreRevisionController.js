@@ -1,5 +1,6 @@
 const Revision = require('../models/scoreRevisionModel');
 const Submission = require('../models/scoreSubmissionModel');
+const AuditLog = require('../models/auditLogModel');
 const { success, error } = require('../utils/response');
 
 const getAll = async (req, res) => {
@@ -35,6 +36,7 @@ const create = async (req, res) => {
     }
 
     const id = await Revision.create(score_submission_id, req.user.id, reason.trim());
+    await AuditLog.log(req.user.id, 'request', 'score_revisions', id, null, reason.trim());
     return success(res, { id }, 'Revision requested', 201);
   } catch (e) {
     return error(res, e.message, 500);
@@ -51,6 +53,7 @@ const decide = (status) => async (req, res) => {
     if (!changed) return error(res, 'Revision was already decided', 409);
 
     const updated = await Revision.getById(req.params.id);
+    await AuditLog.log(req.user.id, status, 'score_revisions', req.params.id, revision.status, status);
     return success(res, updated, 'Revision ' + status);
   } catch (e) {
     return error(res, e.message, 500);
@@ -73,6 +76,7 @@ const cancel = async (req, res) => {
     if (!changed) return error(res, 'Revision was already decided', 409);
 
     const updated = await Revision.getById(req.params.id);
+    await AuditLog.log(req.user.id, 'cancel', 'score_revisions', req.params.id, revision.status, 'cancelled');
     return success(res, updated, 'Revision cancelled');
   } catch (e) {
     return error(res, e.message, 500);
