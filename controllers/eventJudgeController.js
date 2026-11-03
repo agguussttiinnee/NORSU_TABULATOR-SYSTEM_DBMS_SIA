@@ -19,6 +19,15 @@ exports.myAssignments = async (req, res, next) => {
   }
 };
 
+exports.mine = async (req, res, next) => {
+  try {
+    const rows = await EventJudge.findByJudge(req.user.id);
+    return success(res, rows, 'Your assigned events');
+  } catch (e) {
+    next(e);
+  }
+};
+
 exports.assign = async (req, res, next) => {
   try {
     const { event_id, user_id } = req.body;

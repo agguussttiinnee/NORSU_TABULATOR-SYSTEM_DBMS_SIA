@@ -24,13 +24,71 @@
     </section>
   </main>
 
-  <script src="/js/layout.js"></script>
-  <script>
-    // layout.js has already checked the login and role before this runs.
-    const user = window.NorsuAuth.getUser();
-    if (user) {
-      document.getElementById('welcome').textContent = 'Welcome, ' + (user.full_name || user.email);
+
+<script src="/js/layout.js"></script>
+<script>
+  // Display the logged-in judge's name.
+  const user = window.NorsuAuth.getUser();
+
+  if (user) {
+    document.getElementById('welcome').textContent =
+      'Welcome, ' + (user.full_name || user.email);
+  }
+
+  // Retrieve the events assigned to this judge.
+  async function loadMyEvents() {
+    const eventsStatus = document.getElementById('eventsStatus');
+
+    try {
+      const response = await fetch('/api/event-judges/mine', {
+        headers: {
+          Authorization: 'Bearer ' + window.NorsuAuth.getToken()
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        eventsStatus.textContent = result.message || 'Unable to load events.';
+        return;
+      }
+
+      const events = result.data || [];
+
+      if (events.length === 0) {
+        eventsStatus.textContent = 'No events assigned yet.';
+        return;
+      }
+
+      const eventList = document.createElement('div');
+
+      events.forEach(function(event) {
+        const card = document.createElement('div');
+
+        const name = document.createElement('h3');
+        name.textContent = event.event_name;
+
+        const details = document.createElement('p');
+        details.textContent =
+          'Type: ' + (event.event_type || 'N/A') +
+          ' | Venue: ' + (event.venue_name || 'N/A') +
+          ' | Date: ' + (event.event_date || 'N/A') +
+          ' | Status: ' + (event.status || 'N/A');
+
+        card.appendChild(name);
+        card.appendChild(details);
+        eventList.appendChild(card);
+      });
+
+      eventsStatus.replaceWith(eventList);
+
+    } catch (error) {
+      console.error('Error loading assigned events:', error);
+      eventsStatus.textContent = 'Unable to load your assigned events.';
     }
-  </script>
+  }
+
+  loadMyEvents();
+</script>
 </body>
 </html>

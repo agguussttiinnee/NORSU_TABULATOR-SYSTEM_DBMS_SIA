@@ -5,8 +5,9 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 
 router.use(verifyToken);
 
-// Judges can view only their own assigned events
+// Judge routes
 router.get('/my', requireRole('judge'), ej.myAssignments);
+router.get('/mine', requireRole('judge'), ej.mine);
 
 // Admin-only routes
 router.use(requireRole('admin'));

@@ -17,6 +17,7 @@
   var MENUS = {
     admin: [
       { label: 'Events', href: '/events.html' },
+      { label: 'Colleges', href: '/colleges.html' },
       { label: 'Participant registration', href: '/participant-registration.html' },
       { label: 'Awards', href: '/awards.html' },
       { label: 'Users', href: '/users.html' },

@@ -19,11 +19,11 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 
 | | Carl | Bernadette | Gretchen | Montessa | Izy | Resty |
 |---|---|---|---|---|---|---|
-| **Tables** | | | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | |
-| **Endpoints** | | | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | | |
-| **Screens** | | | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | |
+| **Tables** | | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | |
+| **Endpoints** | | `/api/colleges`, `/api/event-types`, `/api/venues` | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | | |
+| **Screens** | | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | |
 | **Shared files** | | | | `public/js/layout.js`, `public/css/app.css` | | |
-| **Join report** | | | `GET /api/awards/leaderboard` (INNER join) | `GET /api/event-judges/report` (INNER join) | | |
+| **Join report** | | `GET /api/colleges/report/no-participants` (LEFT JOIN) | `GET /api/awards/leaderboard` (INNER join) | `GET /api/event-judges/report` (INNER join) | | |
 | **Progress** | | | | | | |
 
 
