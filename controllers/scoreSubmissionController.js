@@ -1,4 +1,5 @@
 const Submission = require('../models/scoreSubmissionModel');
+const AuditLog = require('../models/auditLogModel');
 const { success, error } = require('../utils/response');
 
 const getAll = async (req, res) => {
@@ -47,6 +48,8 @@ const submit = async (req, res) => {
     }
     await Submission.submit(req.params.id);
     const updated = await Submission.getById(req.params.id);
+    const AuditLog = require('../models/auditLogModel');
+    await AuditLog.log(req.user.id, 'lock', 'score_submissions', req.params.id, submission.status, 'locked');
     return success(res, updated, 'Submission submitted and locked');
   } catch (e) {
     return error(res, e.message, 500);
