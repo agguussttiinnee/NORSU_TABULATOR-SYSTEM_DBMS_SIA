@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NORSU Tabulator | Audit Log</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { margin: 0; background: var(--nt-page); color: var(--nt-text); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+    [hidden] { display: none !important; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--nt-line); }
+    th { font-size: 0.8rem; text-transform: uppercase; color: var(--nt-muted); }
+    .table-wrap { overflow-x: auto; }
+    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; background: #eaf1fd; }
+    .msg.error { background: #fdecec; color: #9b1c1c; }
+    .state { text-align: center; color: var(--nt-muted); }
+    .btn { padding: 10px 16px; font: inherit; font-weight: 700; color: #fff; background: var(--nt-blue); border: 0; border-radius: 10px; cursor: pointer; }
+    .btn:hover { background: var(--nt-blue-dark); }
+    .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div id="app-header" data-title="NORSU Tabulator System" data-subtitle="Audit log" data-role="admin"></div>
+
+  <main class="nt-main">
+    <div id="message" class="msg" role="alert" hidden></div>
+
+    <section class="nt-card">
+      <div class="head">
+        <h2>Audit log</h2>
+        <button class="btn" id="refreshBtn" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>User</th><th>Action</th><th>Table</th>
+              <th>Record</th><th>Old value</th><th>New value</th><th>When</th>
+            </tr>
+          </thead>
+          <tbody id="logRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/layout.js"></script>
+  <script>
+    const API = '/api/audit-logs';
+    const message = document.getElementById('message');
+    const rows = document.getElementById('logRows');
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'msg error' : 'msg';
+      message.hidden = false;
+    }
+
+    async function request(url, options) {
+      let response;
+      try {
+        response = await fetch(url, Object.assign({
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + NorsuAuth.getToken()
+          }
+        }, options));
+      } catch (networkError) {
+        throw new Error('Cannot reach the server. Make sure it is running, then try again.');
+      }
+      const body = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        NorsuAuth.logout();
+        throw new Error('Your session has expired. Please log in again.');
+      }
+      if (!response.ok) {
+        throw new Error(body.message || 'Something went wrong.');
+      }
+      return body;
+    }
+
+    function cell(text) {
+      const td = document.createElement('td');
+      td.textContent = text === null || text === undefined ? '' : text;
+      return td;
+    }
+
+    function render(logs) {
+      rows.innerHTML = '';
+      if (!logs.length) {
+        const tr = document.createElement('tr');
+        const td = cell('No audit entries yet.');
+        td.colSpan = 8;
+        td.className = 'state';
+        tr.appendChild(td);
+        rows.appendChild(tr);
+        return;
+      }
+      logs.forEach(function (log) {
+        const tr = document.createElement('tr');
+        tr.appendChild(cell(log.id));
+        tr.appendChild(cell(log.user_id));
+        tr.appendChild(cell(log.action));
+        tr.appendChild(cell(log.table_name));
+        tr.appendChild(cell(log.record_id));
+        tr.appendChild(cell(log.old_value));
+        tr.appendChild(cell(log.new_value));
+        tr.appendChild(cell(new Date(log.created_at).toLocaleString()));
+        rows.appendChild(tr);
+      });
+    }
+
+    async function load() {
+      message.hidden = true;
+      rows.innerHTML = '<tr><td class="state" colspan="8">Loading...</td></tr>';
+      try {
+        const body = await request(API);
+        render(Array.isArray(body.data) ? body.data : []);
+      } catch (e) {
+        rows.innerHTML = '';
+        showMessage(e.message, true);
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

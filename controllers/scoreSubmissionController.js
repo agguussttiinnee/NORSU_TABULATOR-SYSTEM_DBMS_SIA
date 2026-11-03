@@ -1,5 +1,6 @@
 
 const Submission = require('../models/scoreSubmissionModel');
+const AuditLog = require('../models/auditLogModel');
 const { success, error } = require('../utils/response');
 
 const getAll = async (req, res) => {
@@ -58,6 +59,17 @@ const getById = async (req, res) => {
 };
 
 const create = async (req, res) => {
+<<<<<<< HEAD
+  try {
+    const { event_judge_id } = req.body;
+    if (!event_judge_id) return error(res, 'event_judge_id is required', 400);
+    const id = await Submission.create(event_judge_id);
+    await AuditLog.log(req.user.id,'create','score_submissions',id,null,'draft');
+    return success(res, { id }, 'Submission created', 201);
+  } catch (e) {
+    if (e.code === 'ER_DUP_ENTRY') {
+      return error(res, 'This judge already has a submission for this event', 409);
+=======
     try {
         const eventJudgeId = Number(req.body.event_judge_id);
 
@@ -103,6 +115,7 @@ const create = async (req, res) => {
         }
 
         return error(res, 'Failed to create submission', 500);
+>>>>>>> origin/main
     }
 };
 
@@ -156,6 +169,16 @@ const submit = async (req, res) => {
 
         return error(res, 'Failed to submit scores', 500);
     }
+<<<<<<< HEAD
+    await Submission.submit(req.params.id);
+    const updated = await Submission.getById(req.params.id);
+    await AuditLog.log(req.user.id, 'lock', 'score_submissions', req.params.id, submission.status, 'locked');
+    return success(res, updated, 'Submission submitted and locked');
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+=======
+>>>>>>> origin/main
 };
 
 const remove = async (req, res) => {
@@ -195,6 +218,27 @@ const remove = async (req, res) => {
         console.error('Delete submission error:', err);
         return error(res, 'Failed to delete submission', 500);
     }
+<<<<<<< HEAD
+    await Submission.remove(req.params.id);
+    
+    return success(res, null, 'Submission deleted');
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+};
+
+const judgeSubmissionReport = async (req, res) => {
+  try {
+    const data = await Submission.getJudgeSubmissionReport();
+    return success(res, data, 'Judge submission report retrieved');
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+};
+
+module.exports = { getAll, getById, create, submit, remove, judgeSubmissionReport};
+
+=======
 };
 
 module.exports = {
@@ -204,3 +248,4 @@ module.exports = {
     submit,
     remove
 };
+>>>>>>> origin/main
