@@ -70,5 +70,14 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, create, submit, remove };
+const judgeSubmissionReport = async (req, res) => {
+  try {
+    const data = await Submission.getJudgeSubmissionReport();
+    return success(res, data, 'Judge submission report retrieved');
+  } catch (e) {
+    return error(res, e.message, 500);
+  }
+};
+
+module.exports = { getAll, getById, create, submit, remove, judgeSubmissionReport};
 
