@@ -4,6 +4,7 @@ const ej = require('../controllers/eventJudgeController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
 router.get('/mine', verifyToken, requireRole('judge'), ej.mine);
+   router.get('/mine', verifyToken, requireRole('judge'), ej.mine);
 router.use(verifyToken, requireRole('admin'));
 
 router.get('/report', ej.report);    // must stay above '/:id'

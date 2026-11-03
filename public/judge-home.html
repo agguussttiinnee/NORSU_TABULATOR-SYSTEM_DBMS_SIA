@@ -6,7 +6,15 @@
   <title>NORSU Tabulator | My events</title>
   <link rel="stylesheet" href="/css/app.css">
   <style>
-    body { margin: 0; background: var(--nt-page); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+    body { margin: 0; background: var(--nt-page); color: var(--nt-text); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+    [hidden] { display: none !important; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--nt-line); }
+    th { font-size: 0.8rem; text-transform: uppercase; color: var(--nt-muted); }
+    .table-wrap { overflow-x: auto; }
+    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; background: #fdecec; color: #9b1c1c; }
+    .state { text-align: center; color: var(--nt-muted); }
+    .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #eaf1fd; color: var(--nt-blue-dark); font-size: 0.82rem; font-weight: 600; text-transform: capitalize; }
   </style>
 </head>
 <body>
@@ -15,80 +23,113 @@
   <main class="nt-main">
     <section class="nt-card">
       <h2 id="welcome">Welcome</h2>
-      <p class="nt-muted">The events you are assigned to will appear here.</p>
+      <p class="nt-muted">The events you are assigned to appear below.</p>
     </section>
 
     <section class="nt-card">
       <h2>My events</h2>
-      <p id="eventsStatus" class="nt-muted">No events assigned yet. Your admin assigns judges to events.</p>
+      <div id="message" class="msg" role="alert" hidden></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Event</th><th>Type</th><th>Venue</th><th>Date</th><th>Status</th></tr>
+          </thead>
+          <tbody id="eventRows"></tbody>
+        </table>
+      </div>
     </section>
   </main>
 
-  
-<script src="/js/layout.js"></script>
-<script>
-  // Display the logged-in judge's name.
-  const user = window.NorsuAuth.getUser();
+  <script src="/js/layout.js"></script>
+  <script>
+    const API_MINE = '/api/event-judges/mine';
+    const message = document.getElementById('message');
+    const rows = document.getElementById('eventRows');
 
-  if (user) {
-    document.getElementById('welcome').textContent =
-      'Welcome, ' + (user.full_name || user.email);
-  }
-
-  // Retrieve the events assigned to this judge.
-  async function loadMyEvents() {
-    const eventsStatus = document.getElementById('eventsStatus');
-
-    try {
-      const response = await fetch('/api/event-judges/mine', {
-        headers: {
-          Authorization: 'Bearer ' + window.NorsuAuth.getToken()
-        }
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        eventsStatus.textContent = result.message || 'Unable to load events.';
-        return;
-      }
-
-      const events = result.data || [];
-
-      if (events.length === 0) {
-        eventsStatus.textContent = 'No events assigned yet.';
-        return;
-      }
-
-      const eventList = document.createElement('div');
-
-      events.forEach(function(event) {
-        const card = document.createElement('div');
-
-        const name = document.createElement('h3');
-        name.textContent = event.event_name;
-
-        const details = document.createElement('p');
-        details.textContent =
-          'Type: ' + (event.event_type || 'N/A') +
-          ' | Venue: ' + (event.venue_name || 'N/A') +
-          ' | Date: ' + (event.event_date || 'N/A') +
-          ' | Status: ' + (event.status || 'N/A');
-
-        card.appendChild(name);
-        card.appendChild(details);
-        eventList.appendChild(card);
-      });
-
-      eventsStatus.replaceWith(eventList);
-
-    } catch (error) {
-      console.error('Error loading assigned events:', error);
-      eventsStatus.textContent = 'Unable to load your assigned events.';
+    // layout.js has already checked the login and role before this runs.
+    const user = NorsuAuth.getUser();
+    if (user) {
+      document.getElementById('welcome').textContent = 'Welcome, ' + (user.full_name || user.email);
     }
-  }
 
-  loadMyEvents();
-</script>
+    function showError(text) {
+      message.textContent = text;
+      message.hidden = false;
+    }
+
+    async function request(url) {
+      let response;
+      try {
+        response = await fetch(url, {
+          headers: { 'Authorization': 'Bearer ' + NorsuAuth.getToken() }
+        });
+      } catch (networkError) {
+        throw new Error('Cannot reach the server. Make sure it is running, then try again.');
+      }
+      const body = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        NorsuAuth.logout();
+        throw new Error('Your session expired. Please log in again.');
+      }
+      if (response.status === 403) throw new Error('This page is for judges only.');
+      if (!response.ok) throw new Error(body.message || 'Request failed (' + response.status + ').');
+
+      return body.data !== undefined ? body.data : body;
+    }
+
+    function cell(text) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      return td;
+    }
+
+    function messageRow(text) {
+      rows.innerHTML = '';
+      const tr = document.createElement('tr');
+      const td = cell(text);
+      td.colSpan = 5;
+      td.className = 'state';
+      tr.appendChild(td);
+      rows.appendChild(tr);
+    }
+
+    function renderEvents(events) {
+      rows.innerHTML = '';
+      events.forEach((e) => {
+        const tr = document.createElement('tr');
+        tr.appendChild(cell(e.event_name));
+        tr.appendChild(cell(e.event_type));
+        tr.appendChild(cell(e.venue_name));
+        tr.appendChild(cell(new Date(e.event_date).toLocaleString()));
+
+        const statusCell = document.createElement('td');
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = e.status;
+        statusCell.appendChild(chip);
+        tr.appendChild(statusCell);
+
+        rows.appendChild(tr);
+      });
+    }
+
+    async function loadEvents() {
+      messageRow('Loading your events...');
+      try {
+        const events = await request(API_MINE);
+        if (!events.length) {
+          messageRow('No events assigned yet. Your admin assigns judges to events.');
+          return;
+        }
+        renderEvents(events);
+      } catch (err) {
+        messageRow('Could not load your events.');
+        showError(err.message);
+      }
+    }
+
+    loadEvents();
+  </script>
 </body>
 </html>
