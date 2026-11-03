@@ -6,11 +6,17 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 
 router.use(verifyToken);
 
-// Admin-only final rankings
+// Admin-only reports
 router.get(
     '/rankings/:eventId',
     requireRole('admin'),
     scoreController.getEventRankings
+);
+
+router.get(
+    '/missing/:eventId',
+    requireRole('admin'),
+    scoreController.getMissingScores
 );
 
 // Judge-only scoring routes
