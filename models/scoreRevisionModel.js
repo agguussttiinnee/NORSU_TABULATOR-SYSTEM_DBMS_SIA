@@ -32,4 +32,4 @@ const updateStatus = async (id, status, decidedBy) => {
   return result.affectedRows;
 };
 
-module.exports = {getAll, getByld, create, updateStatus};
+module.exports = {getAll, getById, create, updateStatus};
