@@ -71,10 +71,9 @@
     // Not logged in, or the saved session is unreadable: go to the login page.
     if (!token || !role) {
       clearSession();
-      window.location.href = LOGIN_PAGE;
+      window.location.href = LOGIN_PAGE + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
       return;
     }
-
     // Page is limited to one role, and this user has a different one.
     var allowed = host.getAttribute('data-role');
     if (allowed && allowed !== role) {
