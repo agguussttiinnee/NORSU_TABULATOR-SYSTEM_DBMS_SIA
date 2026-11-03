@@ -16,30 +16,75 @@ exports.findAll = async () => {
 };
 
 exports.remove = async (id) => {
-  const [result] = await db.query('DELETE FROM event_judges WHERE id = ?', [id]);
+  const [result] = await db.query(
+    'DELETE FROM event_judges WHERE id = ?',
+    [id]
+  );
   return result.affectedRows;
 };
 
-// JOIN REPORT (INNER): judges per event with user and role.
-// ASSUMPTION: events has columns id and name. Change e.name if Carl uses another column.
+exports.findAllByJudge = async (judgeId) => {
+  const [rows] = await db.query(
+    `SELECT
+        ej.id AS event_judge_id,
+        ej.event_id,
+        e.event_name,
+        ej.user_id AS judge_id,
+        ej.assigned_at
+     FROM event_judges ej
+     INNER JOIN events e ON e.id = ej.event_id
+     WHERE ej.user_id = ?
+     ORDER BY ej.event_id`,
+    [judgeId]
+  );
+
+  return rows;
+};
+
 exports.reportJudgesPerEvent = async (eventId = null) => {
   let sql = `
-    SELECT ej.id AS assignment_id,
-          e.id AS event_id, e.event_name AS event_name,
-           u.id AS user_id, u.full_name AS judge_name, u.email,
-           r.name AS role,
-           ej.assigned_at
+    SELECT
+        ej.id AS assignment_id,
+        e.id AS event_id,
+        e.event_name AS event_name,
+        u.id AS user_id,
+        u.full_name AS judge_name,
+        u.email,
+        r.name AS role,
+        ej.assigned_at
     FROM event_judges ej
     INNER JOIN events e ON e.id = ej.event_id
-    INNER JOIN users u  ON u.id = ej.user_id
-    INNER JOIN roles r  ON r.id = u.role_id
+    INNER JOIN users u ON u.id = ej.user_id
+    INNER JOIN roles r ON r.id = u.role_id
     WHERE u.is_active = 1`;
+
   const params = [];
+
   if (eventId) {
     sql += ' AND e.id = ?';
     params.push(eventId);
   }
+
   sql += ' ORDER BY e.id, u.full_name';
+
   const [rows] = await db.query(sql, params);
+  return rows;
+};
+
+exports.findByJudge = async (userId) => {
+  const [rows] = await db.query(
+    `SELECT ej.id AS assignment_id,
+            e.id AS event_id, e.event_name, e.event_date, e.status,
+            t.name AS event_type,
+            v.name AS venue_name,
+            ej.assigned_at
+     FROM event_judges ej
+     INNER JOIN events e ON e.id = ej.event_id
+     INNER JOIN event_types t ON t.id = e.event_type_id
+     INNER JOIN venues v ON v.id = e.venue_id
+     WHERE ej.user_id = ? AND e.is_active = 1
+     ORDER BY e.event_date`,
+    [userId]
+  );
   return rows;
 };

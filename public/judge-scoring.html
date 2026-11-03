@@ -1,0 +1,619 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Judge Scoring - NORSU Tabulator</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 25px;
+            font-family: Arial, sans-serif;
+            background: #f4f6fb;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        h1, h2 {
+            color: #17365d;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        select, input {
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        select {
+            width: 100%;
+        }
+
+        button {
+            padding: 11px 18px;
+            border: none;
+            border-radius: 6px;
+            background: #17365d;
+            color: white;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        button:hover {
+            background: #254d7d;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 15px;
+            color: #475569;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        th {
+            background: #17365d;
+            color: white;
+        }
+
+        td:first-child {
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td input {
+            width: 85px;
+            text-align: center;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status.locked {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .actions {
+            margin-top: 20px;
+        }
+
+        .secondary {
+            background: #64748b;
+        }
+
+        .secondary:hover {
+            background: #475569;
+        }
+
+        .note {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <h1>Judge Scoring Screen</h1>
+    <p class="subtitle">
+        Select your assigned event to begin scoring.
+    </p>
+
+    <div class="card">
+        <label for="eventSelect">Assigned Events</label>
+        <select id="eventSelect">
+            <option value="">Loading assigned events...</option>
+        </select>
+        <p id="eventMessage" class="message"></p>
+    </div>
+
+    <div id="scoringSection" class="hidden">
+
+        <div class="card">
+            <h2 id="selectedEventName"></h2>
+
+            <p>
+                Submission Status:
+                <span id="submissionStatus" class="status">Loading...</span>
+            </p>
+
+            <p id="scoringMessage" class="message"></p>
+        </div>
+
+        <div class="card">
+            <h2>Participants and Scores</h2>
+
+            <div class="table-wrapper">
+                <table id="scoringTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <p class="note">
+                Enter a score within the maximum score for each criterion.
+                All participants must be scored under every criterion before submission.
+            </p>
+
+            <div class="actions">
+                <button id="saveButton" onclick="saveScores()">
+                    Save Scores
+                </button>
+
+                <button id="submitButton" class="secondary" onclick="submitScores()">
+                    Submit Scores
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    const API = '/api';
+    const token = localStorage.getItem('norsuToken');
+
+    const eventSelect = document.getElementById('eventSelect');
+    const eventMessage = document.getElementById('eventMessage');
+    const scoringSection = document.getElementById('scoringSection');
+    const selectedEventName = document.getElementById('selectedEventName');
+    const scoringMessage = document.getElementById('scoringMessage');
+    const submissionStatus = document.getElementById('submissionStatus');
+    const tableHead = document.getElementById('tableHead');
+    const tableBody = document.getElementById('tableBody');
+    const saveButton = document.getElementById('saveButton');
+    const submitButton = document.getElementById('submitButton');
+
+    let participants = [];
+    let criteria = [];
+    let scores = [];
+    let currentSubmission = null;
+    let currentEvent = null;
+
+    async function api(path, options = {}) {
+        const response = await fetch(`${API}${path}`, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+                ...(options.headers || {})
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Something went wrong.');
+        }
+
+        return result.data;
+    }
+
+    function escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        })[character]);
+    }
+
+    async function loadAssignedEvents() {
+        try {
+            if (!token) {
+                throw new Error('Please log in first.');
+            }
+
+            const assignments = await api('/event-judges/my');
+
+            eventSelect.innerHTML =
+                '<option value="">Select an event</option>';
+
+            assignments.forEach(event => {
+                const option = document.createElement('option');
+
+                option.value = event.event_id;
+                option.textContent = event.event_name;
+                option.dataset.assignmentId = event.event_judge_id;
+
+                eventSelect.appendChild(option);
+            });
+
+            eventMessage.textContent = assignments.length
+                ? 'Your assigned events have been loaded.'
+                : 'You currently have no assigned events.';
+
+        } catch (error) {
+            eventMessage.textContent = error.message;
+            eventSelect.innerHTML =
+                '<option value="">Unable to load events</option>';
+        }
+    }
+
+    async function loadEventScoring(event) {
+        try {
+            scoringSection.classList.add('hidden');
+            scoringMessage.textContent = 'Loading participants and criteria...';
+
+            currentEvent = event;
+
+            const [participantData, criteriaData, submissions] =
+                await Promise.all([
+                    api(`/events/${event.event_id}/participants`),
+                    api(`/criteria/event/${event.event_id}`),
+                    api('/score-submissions')
+                ]);
+
+            participants = participantData;
+            criteria = criteriaData;
+
+            if (!participants.length) {
+                throw new Error('No participants are registered for this event.');
+            }
+
+            if (!criteria.length) {
+                throw new Error('No scoring criteria have been created for this event.');
+            }
+
+            const existingSubmission = submissions.find(
+                submission =>
+                    Number(submission.event_judge_id) ===
+                    Number(event.event_judge_id)
+            );
+
+            if (existingSubmission) {
+                currentSubmission = existingSubmission;
+            } else {
+                const created = await api('/score-submissions', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        event_judge_id: Number(event.event_judge_id)
+                    })
+                });
+
+                currentSubmission = {
+                    id: created.id,
+                    event_judge_id: event.event_judge_id,
+                    status: 'draft'
+                };
+            }
+
+            await loadExistingScores();
+
+            selectedEventName.textContent = event.event_name;
+
+            renderScoringTable();
+            updateSubmissionStatus();
+
+            scoringSection.classList.remove('hidden');
+            scoringMessage.textContent =
+                'Participants and criteria loaded successfully.';
+
+        } catch (error) {
+            scoringSection.classList.remove('hidden');
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+            scoringMessage.textContent = error.message;
+        }
+    }
+
+    async function loadExistingScores() {
+        scores = [];
+
+        for (const criterion of criteria) {
+            const criterionScores = await api(
+                `/scores/criterion/${criterion.id}`
+            );
+
+            scores.push(...criterionScores);
+        }
+    }
+
+    function findScore(participantId, criterionId) {
+        return scores.find(score =>
+            Number(score.participant_id) === Number(participantId) &&
+            Number(score.criterion_id) === Number(criterionId)
+        );
+    }
+
+    function renderScoringTable() {
+        let header = '<tr><th>Participant</th>';
+
+        criteria.forEach(criterion => {
+            header += `
+                <th>
+                    ${escapeHTML(criterion.name)}
+                    <br>
+                    <small>
+                        ${Number(criterion.weight)}% |
+                        Max: ${Number(criterion.max_score)}
+                    </small>
+                </th>
+            `;
+        });
+
+        header += '</tr>';
+        tableHead.innerHTML = header;
+
+        let rows = '';
+
+        participants.forEach(participant => {
+            const participantId = participant.participant_id;
+
+            rows += `
+                <tr>
+                    <td>
+                        ${escapeHTML(participant.participant_name)}
+                        <br>
+                        <small>${escapeHTML(participant.entry_number)}</small>
+                    </td>
+            `;
+
+            criteria.forEach(criterion => {
+                const existingScore = findScore(
+                    participantId,
+                    criterion.id
+                );
+
+                const value = existingScore
+                    ? Number(existingScore.score)
+                    : '';
+
+                rows += `
+                    <td>
+                        <input
+                            type="number"
+                            class="score-input"
+                            data-participant="${participantId}"
+                            data-criterion="${criterion.id}"
+                            min="0"
+                            max="${Number(criterion.max_score)}"
+                            step="0.01"
+                            value="${value}"
+                            placeholder="0-${Number(criterion.max_score)}"
+                            ${currentSubmission.status === 'locked' ? 'disabled' : ''}
+                        >
+                    </td>
+                `;
+            });
+
+            rows += '</tr>';
+        });
+
+        tableBody.innerHTML = rows;
+    }
+
+    function updateSubmissionStatus() {
+        const locked = currentSubmission.status === 'locked';
+
+        submissionStatus.textContent = locked ? 'Locked' : 'Draft';
+        submissionStatus.classList.toggle('locked', locked);
+
+        saveButton.disabled = locked;
+        submitButton.disabled = locked;
+
+        document.querySelectorAll('.score-input').forEach(input => {
+            input.disabled = locked;
+        });
+    }
+
+    async function saveScores() {
+        try {
+            if (!currentSubmission || currentSubmission.status === 'locked') {
+                throw new Error('This submission is already locked.');
+            }
+
+            saveButton.disabled = true;
+            scoringMessage.textContent = 'Saving scores...';
+
+            const inputs = document.querySelectorAll('.score-input');
+
+            for (const input of inputs) {
+                const rawValue = input.value.trim();
+
+                if (rawValue === '') {
+                    continue;
+                }
+
+                const scoreValue = Number(rawValue);
+                const participantId = Number(input.dataset.participant);
+                const criterionId = Number(input.dataset.criterion);
+
+                const criterion = criteria.find(
+                    item => Number(item.id) === criterionId
+                );
+
+                if (
+                    !Number.isFinite(scoreValue) ||
+                    scoreValue < 0 ||
+                    scoreValue > Number(criterion.max_score)
+                ) {
+                    throw new Error(
+                        `Invalid score for ${criterion.name}. Enter 0 to ${criterion.max_score}.`
+                    );
+                }
+
+                const existingScore = findScore(
+                    participantId,
+                    criterionId
+                );
+
+                if (existingScore) {
+                    await api(`/scores/${existingScore.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            score: scoreValue
+                        })
+                    });
+                } else {
+                    const created = await api('/scores', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            participant_id: participantId,
+                            criterion_id: criterionId,
+                            score: scoreValue
+                        })
+                    });
+
+                    scores.push({
+                        id: created.id,
+                        participant_id: participantId,
+                        criterion_id: criterionId,
+                        score: scoreValue
+                    });
+                }
+            }
+
+            await loadExistingScores();
+
+            scoringMessage.textContent = 'Scores saved successfully!';
+
+        } catch (error) {
+            scoringMessage.textContent = error.message;
+        } finally {
+            saveButton.disabled = currentSubmission?.status === 'locked';
+        }
+    }
+
+    async function submitScores() {
+        const confirmed = confirm(
+            'Are you sure you want to submit your scores? Once submitted, your scores for this event will be locked.'
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            submitButton.disabled = true;
+            scoringMessage.textContent = 'Saving and submitting scores...';
+
+            await saveScores();
+
+            const missingInputs = [...document.querySelectorAll('.score-input')]
+                .filter(input => input.value.trim() === '');
+
+            if (missingInputs.length > 0) {
+                throw new Error(
+                    'Please complete all participant scores before submitting.'
+                );
+            }
+
+            const updated = await api(
+                `/score-submissions/${currentSubmission.id}/submit`,
+                {
+                    method: 'PATCH'
+                }
+            );
+
+            currentSubmission = updated;
+
+            updateSubmissionStatus();
+
+            scoringMessage.textContent =
+                'Your scores have been submitted and locked successfully!';
+
+        } catch (error) {
+            scoringMessage.textContent = error.message;
+            submitButton.disabled = false;
+        }
+    }
+
+    eventSelect.addEventListener('change', async function () {
+        if (!eventSelect.value) {
+            scoringSection.classList.add('hidden');
+            currentEvent = null;
+            currentSubmission = null;
+            return;
+        }
+
+        const selectedOption =
+            eventSelect.options[eventSelect.selectedIndex];
+
+        const event = {
+            event_id: Number(selectedOption.value),
+            event_name: selectedOption.textContent,
+            event_judge_id: Number(selectedOption.dataset.assignmentId)
+        };
+
+        await loadEventScoring(event);
+    });
+
+    loadAssignedEvents();
+</script>
+
+</body>
+</html>

@@ -1,11 +1,12 @@
+
 const Event = require('../models/eventModel');
 const Participant = require('../models/participantModel');
 const EventParticipant = require('../models/eventParticipantModel');
+const EventJudge = require('../models/eventJudgeModel');
 const { success, error } = require('../utils/response');
 
 function validId(value) {
     const id = Number(value);
-
     return Number.isInteger(id) && id > 0 ? id : null;
 }
 
@@ -38,17 +39,26 @@ exports.listForEvent = async (req, res, next) => {
         const eventId = validId(req.params.id);
 
         if (!eventId) {
-            return error(
-                res,
-                'Event ID must be a positive integer',
-                400
-            );
+            return error(res, 'Event ID must be a positive integer', 400);
         }
 
         const event = await Event.findById(eventId);
 
         if (!event) {
             return error(res, 'Event not found', 404);
+        }
+
+        // Judges can only view participants in their assigned events
+        if (req.user.role === 'judge') {
+            const assignments = await EventJudge.findAllByJudge(req.user.id);
+
+            const isAssigned = assignments.some(
+                assignment => Number(assignment.event_id) === eventId
+            );
+
+            if (!isAssigned) {
+                return error(res, 'You are not assigned to this event', 403);
+            }
         }
 
         return success(
