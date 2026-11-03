@@ -26,6 +26,7 @@ const create = async (req, res) => {
     const { event_judge_id } = req.body;
     if (!event_judge_id) return error(res, 'event_judge_id is required', 400);
     const id = await Submission.create(event_judge_id);
+    await AuditLog.log(req.user.id,'create','score_submissions',id,null,'draft');
     return success(res, { id }, 'Submission created', 201);
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') {
@@ -48,7 +49,6 @@ const submit = async (req, res) => {
     }
     await Submission.submit(req.params.id);
     const updated = await Submission.getById(req.params.id);
-    const AuditLog = require('../models/auditLogModel');
     await AuditLog.log(req.user.id, 'lock', 'score_submissions', req.params.id, submission.status, 'locked');
     return success(res, updated, 'Submission submitted and locked');
   } catch (e) {
@@ -64,6 +64,7 @@ const remove = async (req, res) => {
       return error(res, 'Submitted or locked submissions cannot be deleted', 403);
     }
     await Submission.remove(req.params.id);
+    
     return success(res, null, 'Submission deleted');
   } catch (e) {
     return error(res, e.message, 500);
