@@ -41,3 +41,9 @@ exports.report = async (req, res, next) => {
     return success(res, rows, 'Judges per event');
   } catch (e) { next(e); }
 };
+
+exports.mine = async (req, res, next) => {
+  try {
+    return success(res, await EventJudge.findByJudge(req.user.id), 'Your assigned events');
+  } catch (e) { next(e); }
+};
