@@ -426,7 +426,6 @@ exports.getEventRankings = async (eventId) => {
             (a, b) => b.total_score - a.total_score
         );
 
-        // Resolve ties using criteria in descending weight order
         const nearlyEqual = (a, b) =>
             Math.abs(a - b) < 0.0001;
 
@@ -531,4 +530,37 @@ exports.getEventRankings = async (eventId) => {
     } finally {
         connection.release();
     }
+};
+
+// Get missing scores for an event
+exports.findMissingScoresByEvent = async (eventId) => {
+    const [rows] = await db.query(
+        `SELECT
+            ep.event_id,
+            ep.entry_number,
+            p.id AS participant_id,
+            p.name AS participant_name,
+            ej.user_id AS judge_id,
+            c.id AS criterion_id,
+            c.name AS criterion_name,
+            c.weight,
+            c.max_score
+         FROM event_participants ep
+         INNER JOIN participants p
+            ON p.id = ep.participant_id
+         INNER JOIN event_judges ej
+            ON ej.event_id = ep.event_id
+         INNER JOIN criteria c
+            ON c.event_id = ep.event_id
+         LEFT JOIN scores s
+            ON s.judge_id = ej.user_id
+            AND s.participant_id = ep.participant_id
+            AND s.criterion_id = c.id
+         WHERE ep.event_id = ?
+            AND s.id IS NULL
+         ORDER BY ep.entry_number, ej.user_id, c.id`,
+        [eventId]
+    );
+
+    return rows;
 };

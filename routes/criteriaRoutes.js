@@ -5,22 +5,22 @@ const router = express.Router();
 const criteria = require('../controllers/criteriaController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
-// Only administrators can manage event criteria.
-router.use(verifyToken, requireRole('admin'));
+router.use(verifyToken);
 
-// Get all criteria for an event.
-router.get('/event/:eventId', criteria.list);
+// Admins and judges can view event criteria.
+// The controller checks judge assignments.
+router.get(
+    '/event/:eventId',
+    requireRole('admin', 'judge'),
+    criteria.list
+);
 
-// Get the total weight of criteria for an event.
+// Admin-only criteria management
+router.use(requireRole('admin'));
+
 router.get('/event/:eventId/total-weight', criteria.totalWeight);
-
-// Get one criterion.
 router.get('/:id', criteria.get);
-
-// Create a criterion.
 router.post('/', criteria.create);
-
-// Update a criterion.
 router.put('/:id', criteria.update);
 router.patch('/:id', criteria.update);
 router.delete('/:id', criteria.remove);

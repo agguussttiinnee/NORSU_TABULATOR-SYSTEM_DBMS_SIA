@@ -36,10 +36,10 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 <body>
 <div id="app-header" data-title="NORSU Tabulator System" data-subtitle="Colleges management · Master data module" data-role="admin"></div>
 <script src="/js/layout.js"></script>
- 
+
 <main>
 <div id="notice" class="notice" role="status">Loading colleges…</div>
- 
+
 <div class="grid">
 <section class="card">
 <h2 id="formTitle">Add college</h2>
@@ -47,10 +47,10 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 <input id="collegeId" type="hidden">
 <label for="name">College name</label>
 <input id="name" maxlength="100" required placeholder="e.g. College of Education">
- 
+
 <label for="code">College code</label>
 <input id="code" maxlength="20" required placeholder="e.g. COED">
- 
+
 <div class="actions">
 <button type="submit" id="submitCollege">Add college</button>
 <button type="button" class="secondary" id="cancelEdit" hidden>Cancel edit</button>
@@ -58,7 +58,7 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 </div>
 </form>
 </section>
- 
+
 <section class="card">
 <h2>Active colleges</h2>
 <div class="table-wrap">
@@ -71,7 +71,7 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 </div>
 </section>
 </div>
- 
+
 <section class="card" style="margin-top:18px">
 <h2>Colleges with no participants in an event</h2>
 <p class="muted">LEFT JOIN report: colleges that have no registered participant in the chosen event.</p>
@@ -92,16 +92,16 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#5d6d86;ba
 </div>
 </section>
 </main>
- 
+
 <script>
 const API='/api';
 const $=id=>document.getElementById(id);
- 
+
 function show(message,isError=false){
   $('notice').textContent=message;
   $('notice').classList.toggle('error',isError);
 }
- 
+
 async function api(path,options={}){
   const response=await fetch(`${API}${path}`,{
     ...options,
@@ -111,25 +111,25 @@ async function api(path,options={}){
       ...(options.headers||{})
     }
   });
- 
+
   if(response.status===401){NorsuAuth.logout();throw new Error('Session expired. Please log in again.');}
- 
+
   let payload;
   try{payload=await response.json();}
   catch{throw new Error(`Server returned HTTP ${response.status} without JSON`);}
- 
+
   if(!response.ok||payload.success===false){
     throw new Error(payload.message||`Request failed (${response.status})`);
   }
   return payload.data;
 }
- 
+
 function esc(value){
   return String(value??'').replace(/[&<>"']/g,c=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
 }
- 
+
 function resetForm(){
   $('collegeForm').reset();
   $('collegeId').value='';
@@ -137,7 +137,7 @@ function resetForm(){
   $('submitCollege').textContent='Add college';
   $('cancelEdit').hidden=true;
 }
- 
+
 async function loadColleges(){
   $('collegesBody').innerHTML='<tr><td colspan="4" class="muted">Loading colleges…</td></tr>';
   try{
@@ -157,10 +157,10 @@ async function loadColleges(){
     show(e.message,true);
   }
 }
- 
+
 $('refresh').addEventListener('click',loadColleges);
 $('cancelEdit').addEventListener('click',resetForm);
- 
+
 $('collegeForm').addEventListener('submit',async event=>{
   event.preventDefault();
   const id=$('collegeId').value;
@@ -172,11 +172,11 @@ $('collegeForm').addEventListener('submit',async event=>{
     show(id?'College updated.':'College added.');
   }catch(e){show(e.message,true);}
 });
- 
+
 $('collegesBody').addEventListener('click',async event=>{
   const editId=event.target.getAttribute('data-edit');
   const deleteId=event.target.getAttribute('data-delete');
- 
+
   if(editId){
     try{
       const c=await api(`/colleges/${editId}`);
@@ -189,7 +189,7 @@ $('collegesBody').addEventListener('click',async event=>{
       window.scrollTo({top:0,behavior:'smooth'});
     }catch(e){show(e.message,true);}
   }
- 
+
   if(deleteId&&confirm(`Delete college #${deleteId}? It will be hidden, not erased.`)){
     try{
       await api(`/colleges/${deleteId}`,{method:'DELETE'});
@@ -198,7 +198,7 @@ $('collegesBody').addEventListener('click',async event=>{
     }catch(e){show(e.message,true);}
   }
 });
- 
+
 async function runReport(){
   const eventId=$('reportEventId').value.trim();
   if(!eventId){show('Enter an event ID first.',true);return;}
@@ -215,9 +215,8 @@ async function runReport(){
   }
 }
 $('runReport').addEventListener('click',runReport);
- 
+
 loadColleges();
 </script>
 </body>
 </html>
- 

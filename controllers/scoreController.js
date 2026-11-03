@@ -1,4 +1,3 @@
-
 const scores = require('../models/scoreModel');
 const criteria = require('../models/criteriaModel');
 const { success, error } = require('../utils/response');
@@ -41,7 +40,7 @@ exports.get = async (req, res) => {
 
         const row = await scores.findById(id);
 
-        if (!row || row.judge_id !== judgeId) {
+        if (!row || Number(row.judge_id) !== Number(judgeId)) {
             return error(res, 'Score not found', 404);
         }
 
@@ -256,6 +255,33 @@ exports.getEventRankings = async (req, res) => {
             res,
             err.message || 'Failed to retrieve event rankings',
             statusCodes[err.code] || 500
+        );
+    }
+};
+
+// Get missing scores report for an event
+exports.getMissingScores = async (req, res) => {
+    try {
+        const eventId = Number(req.params.eventId);
+
+        if (!Number.isInteger(eventId) || eventId <= 0) {
+            return error(res, 'Invalid event ID', 400);
+        }
+
+        const missingScores = await scores.findMissingScoresByEvent(eventId);
+
+        return success(
+            res,
+            missingScores,
+            'Missing scores report retrieved successfully'
+        );
+
+    } catch (err) {
+        console.error('Get missing scores error:', err);
+        return error(
+            res,
+            'Failed to retrieve missing scores report',
+            500
         );
     }
 };

@@ -1,5 +1,6 @@
 
 const criteria = require('../models/criteriaModel');
+const EventJudge = require('../models/eventJudgeModel');
 const { success, error } = require('../utils/response');
 
 exports.list = async (req, res) => {
@@ -8,6 +9,19 @@ exports.list = async (req, res) => {
 
         if (!Number.isInteger(eventId) || eventId <= 0) {
             return error(res, 'Invalid event ID', 400);
+        }
+
+        // Judges can only view criteria for their assigned events
+        if (req.user.role === 'judge') {
+            const assignments = await EventJudge.findAllByJudge(req.user.id);
+
+            const isAssigned = assignments.some(
+                assignment => Number(assignment.event_id) === eventId
+            );
+
+            if (!isAssigned) {
+                return error(res, 'You are not assigned to this event', 403);
+            }
         }
 
         const rows = await criteria.findAllByEvent(eventId);
@@ -231,7 +245,6 @@ exports.remove = async (req, res) => {
         }
 
         return success(res, null, 'Criterion deleted successfully');
-
     } catch (err) {
         console.error('Delete criterion error:', err);
         return error(res, 'Failed to delete criterion', 500);
