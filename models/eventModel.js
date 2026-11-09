@@ -86,7 +86,7 @@ exports.update = async (id, fields) => {
     if (!keys.length) {
         return 0;
     }
-
+// kung unsay na input, mga allowed...
     const sets = keys.map(key => `${key} = ?`).join(', ');
     const values = keys.map(key => fields[key]);
 
