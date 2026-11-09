@@ -1,4 +1,3 @@
-
 const db = require('../config/db');
 
 const getAll = async () => {
@@ -217,29 +216,43 @@ const remove = async (id) => {
     return result.affectedRows;
 };
 
-<<<<<<< HEAD
 // FULL OUTER JOIN (MySQL has none): LEFT JOIN UNION RIGHT JOIN
 const getJudgeSubmissionReport = async () => {
-  const [rows] = await db.query(
-    `SELECT ej.id AS event_judge_id, u.full_name AS judge_name, e.event_name,
-            ss.id AS submission_id, ss.status AS submission_status, ss.submitted_at
-     FROM event_judges ej
-     LEFT JOIN score_submissions ss ON ss.event_judge_id = ej.id
-     LEFT JOIN users u ON u.id = ej.user_id
-     LEFT JOIN events e ON e.id = ej.event_id
-     UNION
-     SELECT ej.id AS event_judge_id, u.full_name AS judge_name, e.event_name,
-            ss.id AS submission_id, ss.status AS submission_status, ss.submitted_at
-     FROM event_judges ej
-     RIGHT JOIN score_submissions ss ON ss.event_judge_id = ej.id
-     LEFT JOIN users u ON u.id = ej.user_id
-     LEFT JOIN events e ON e.id = ej.event_id`
-  );
-  return rows;
+    const [rows] = await db.query(
+        `SELECT ej.id AS event_judge_id,
+                u.full_name AS judge_name,
+                e.event_name,
+                ss.id AS submission_id,
+                ss.status AS submission_status,
+                ss.submitted_at
+         FROM event_judges ej
+         LEFT JOIN score_submissions ss
+             ON ss.event_judge_id = ej.id
+         LEFT JOIN users u
+             ON u.id = ej.user_id
+         LEFT JOIN events e
+             ON e.id = ej.event_id
+
+         UNION
+
+         SELECT ej.id AS event_judge_id,
+                u.full_name AS judge_name,
+                e.event_name,
+                ss.id AS submission_id,
+                ss.status AS submission_status,
+                ss.submitted_at
+         FROM event_judges ej
+         RIGHT JOIN score_submissions ss
+             ON ss.event_judge_id = ej.id
+         LEFT JOIN users u
+             ON u.id = ej.user_id
+         LEFT JOIN events e
+             ON e.id = ej.event_id`
+    );
+
+    return rows;
 };
 
-module.exports = { getAll, getById, create, submit, remove, getJudgeSubmissionReport };
-=======
 module.exports = {
     getAll,
     getAllByJudge,
@@ -247,6 +260,6 @@ module.exports = {
     getByIdWithAssignment,
     create,
     submit,
-    remove
+    remove,
+    getJudgeSubmissionReport
 };
->>>>>>> origin/main

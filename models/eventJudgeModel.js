@@ -73,7 +73,7 @@ exports.reportJudgesPerEvent = async (eventId = null) => {
 
 exports.findByJudge = async (userId) => {
   const [rows] = await db.query(
-    `SELECT ej.id AS assignment_id,
+    `SELECT ej.id AS event_judge_id,
             e.id AS event_id, e.event_name, e.event_date, e.status,
             t.name AS event_type,
             v.name AS venue_name,

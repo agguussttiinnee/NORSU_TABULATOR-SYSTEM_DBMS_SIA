@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NORSU Tabulator | Revision Requests</title>
+
+    <link rel="stylesheet" href="/css/app.css">
+
+    <style>
+        body {
+            margin: 0;
+            background: var(--nt-page);
+            color: var(--nt-text);
+            font-family: "Segoe UI", system-ui, Arial, sans-serif;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .msg {
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            background: #eaf1fd;
+        }
+
+        .msg.error {
+            background: #fdecec;
+            color: #9b1c1c;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 750px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--nt-line);
+            vertical-align: top;
+        }
+
+        th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--nt-muted);
+        }
+
+        .state {
+            text-align: center;
+            color: var(--nt-muted);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 13px;
+            font: inherit;
+            font-weight: 700;
+            color: #fff;
+            background: var(--nt-blue);
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: var(--nt-blue-dark);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn.approve {
+            background: #15803d;
+        }
+
+        .btn.approve:hover {
+            background: #166534;
+        }
+
+        .btn.reject {
+            background: #b42318;
+        }
+
+        .btn.reject:hover {
+            background: #8f1c12;
+        }
+
+        .btn.secondary {
+            color: var(--nt-blue);
+            background: #eaf1fd;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+
+        .status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status.approved {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status.rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .reason {
+            min-width: 220px;
+            max-width: 350px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .summary {
+            color: var(--nt-muted);
+            margin-top: 0;
+        }
+
+        @media (max-width: 600px) {
+            .nt-main {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div
+        id="app-header"
+        data-title="NORSU Tabulator System"
+        data-subtitle="Revision requests management"
+        data-role="admin">
+    </div>
+
+    <main class="nt-main">
+
+        <div id="message" class="msg" role="alert" hidden></div>
+
+        <section class="nt-card">
+            <h2>Score Revision Requests</h2>
+
+            <p class="summary">
+                Review judges' requests to revise their locked scores.
+                Approved requests will reopen only the corresponding judge's submission.
+            </p>
+
+            <button class="btn secondary" id="refreshBtn" type="button">
+                Refresh Requests
+            </button>
+
+            <div class="table-wrap" style="margin-top: 18px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Request ID</th>
+                            <th>Submission ID</th>
+                            <th>Judge ID</th>
+                            <th>Reason</th>
+                            <th>Date Requested</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="requestRows">
+                        <tr>
+                            <td colspan="7" class="state">
+                                Loading revision requests...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="/js/layout.js"></script>
+
+    <script>
+        const API = '/api/score-revisions';
+
+        const message = document.getElementById('message');
+        const rows = document.getElementById('requestRows');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        function showMessage(text, isError = false) {
+            message.textContent = text;
+            message.className = isError ? 'msg error' : 'msg';
+            message.hidden = false;
+        }
+
+        async function request(url, options = {}) {
+            let response;
+
+            try {
+                response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + NorsuAuth.getToken(),
+                        ...(options.headers || {})
+                    }
+                });
+            } catch (error) {
+                throw new Error(
+                    'Cannot reach the server. Make sure it is running.'
+                );
+            }
+
+            const body = await response.json().catch(() => ({}));
+
+            if (response.status === 401) {
+                NorsuAuth.logout();
+                throw new Error('Your session expired. Please log in again.');
+            }
+
+            if (response.status === 403) {
+                throw new Error('Only admins can manage revision requests.');
+            }
+
+            if (!response.ok || body.success === false) {
+                throw new Error(body.message || 'Request failed.');
+            }
+
+            return body.data !== undefined ? body.data : body;
+        }
+
+        function makeCell(value) {
+            const td = document.createElement('td');
+            td.textContent = value ?? '-';
+            return td;
+        }
+
+        function showTableMessage(text) {
+            rows.innerHTML = '';
+
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+
+            td.colSpan = 7;
+            td.className = 'state';
+            td.textContent = text;
+
+            tr.appendChild(td);
+            rows.appendChild(tr);
+        }
+
+        function makeButton(label, className, onClick) {
+            const button = document.createElement('button');
+
+            button.type = 'button';
+            button.className = 'btn ' + className;
+            button.textContent = label;
+            button.addEventListener('click', onClick);
+
+            return button;
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) {
+                return String(value);
+            }
+
+            return date.toLocaleString();
+        }
+
+        function renderRequests(requests) {
+            rows.innerHTML = '';
+
+            if (!requests.length) {
+                showTableMessage('No revision requests found.');
+                return;
+            }
+
+            requests.sort((a, b) => {
+                if (a.status === 'pending' && b.status !== 'pending') return -1;
+                if (a.status !== 'pending' && b.status === 'pending') return 1;
+
+                return new Date(b.created_at) - new Date(a.created_at);
+            });
+
+            requests.forEach(item => {
+                const tr = document.createElement('tr');
+
+                tr.appendChild(makeCell(item.id));
+                tr.appendChild(makeCell(item.score_submission_id));
+                tr.appendChild(makeCell(item.requested_by));
+
+                const reasonCell = makeCell(item.reason);
+                reasonCell.className = 'reason';
+                tr.appendChild(reasonCell);
+
+                tr.appendChild(makeCell(formatDate(item.created_at)));
+
+                const statusCell = document.createElement('td');
+                const statusBadge = document.createElement('span');
+
+                statusBadge.className =
+                    'status ' + String(item.status || '').toLowerCase();
+
+                statusBadge.textContent = item.status || 'Unknown';
+
+                statusCell.appendChild(statusBadge);
+                tr.appendChild(statusCell);
+
+                const actionsCell = document.createElement('td');
+                actionsCell.className = 'actions';
+
+                if (item.status === 'pending') {
+                    const approveBtn = makeButton(
+                        'Approve',
+                        'approve',
+                        () => decideRequest(item, 'approved')
+                    );
+
+                    const rejectBtn = makeButton(
+                        'Reject',
+                        'reject',
+                        () => decideRequest(item, 'rejected')
+                    );
+
+                    actionsCell.appendChild(approveBtn);
+                    actionsCell.appendChild(rejectBtn);
+                } else {
+                    actionsCell.textContent = 'Already processed';
+                }
+
+                tr.appendChild(actionsCell);
+                rows.appendChild(tr);
+            });
+        }
+
+        async function loadRequests() {
+            refreshBtn.disabled = true;
+            showTableMessage('Loading revision requests...');
+
+            try {
+                const requests = await request(API);
+
+                renderRequests(requests);
+
+                showMessage('Revision requests loaded successfully.');
+            } catch (error) {
+                showTableMessage('Could not load revision requests.');
+                showMessage(error.message, true);
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        }
+
+        async function decideRequest(item, decision) {
+            const action = decision === 'approved'
+                ? 'approve'
+                : 'reject';
+
+            const confirmed = confirm(
+                'Are you sure you want to ' + action +
+                ' revision request #' + item.id + '?'
+            );
+
+            if (!confirmed) return;
+
+            try {
+                const buttons = rows.querySelectorAll('button');
+                buttons.forEach(button => button.disabled = true);
+
+                await request(API + '/' + item.id + '/decision', {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                        decision: decision
+                    })
+                });
+
+                showMessage(
+                    decision === 'approved'
+                        ? 'Revision request approved. The judge can now edit their scores.'
+                        : 'Revision request rejected. The judge submission remains locked.'
+                );
+
+                await loadRequests();
+
+            } catch (error) {
+                showMessage(error.message, true);
+                await loadRequests();
+            }
+        }
+
+        refreshBtn.addEventListener('click', loadRequests);
+
+        loadRequests();
+    </script>
+
+</body>
+</html>
