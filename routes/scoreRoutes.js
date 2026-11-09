@@ -26,5 +26,6 @@ router.get('/criterion/:criterionId', scoreController.list);
 router.get('/:id', scoreController.get);
 router.post('/', scoreController.create);
 router.put('/:id', scoreController.update);
+router.delete('/:id', scoreController.delete);
 
 module.exports = router;
