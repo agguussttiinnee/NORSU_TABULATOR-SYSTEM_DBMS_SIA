@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 const Revision = require('../models/scoreRevisionModel');
 const Submission = require('../models/scoreSubmissionModel');
 const AuditLog = require('../models/auditLogModel');
@@ -85,7 +85,7 @@ const cancel = async (req, res) => {
 };
 
 module.exports = { getAll, getById, create, approve, reject, cancel };
-=======
+
 
 const Revision = require('../models/scoreRevisionModel');
 const { success, error } = require('../utils/response');
@@ -251,4 +251,4 @@ module.exports = {
     create,
     decide
 };
->>>>>>> origin/main
+

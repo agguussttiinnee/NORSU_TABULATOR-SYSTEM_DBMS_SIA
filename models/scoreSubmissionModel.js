@@ -217,7 +217,7 @@ const remove = async (id) => {
     return result.affectedRows;
 };
 
-<<<<<<< HEAD
+
 // FULL OUTER JOIN (MySQL has none): LEFT JOIN UNION RIGHT JOIN
 const getJudgeSubmissionReport = async () => {
   const [rows] = await db.query(

@@ -59,7 +59,7 @@ const getById = async (req, res) => {
 };
 
 const create = async (req, res) => {
-<<<<<<< HEAD
+
   try {
     const { event_judge_id } = req.body;
     if (!event_judge_id) return error(res, 'event_judge_id is required', 400);
@@ -169,7 +169,7 @@ const submit = async (req, res) => {
 
         return error(res, 'Failed to submit scores', 500);
     }
-<<<<<<< HEAD
+
     await Submission.submit(req.params.id);
     const updated = await Submission.getById(req.params.id);
     await AuditLog.log(req.user.id, 'lock', 'score_submissions', req.params.id, submission.status, 'locked');
@@ -218,7 +218,6 @@ const remove = async (req, res) => {
         console.error('Delete submission error:', err);
         return error(res, 'Failed to delete submission', 500);
     }
-<<<<<<< HEAD
     await Submission.remove(req.params.id);
     
     return success(res, null, 'Submission deleted');

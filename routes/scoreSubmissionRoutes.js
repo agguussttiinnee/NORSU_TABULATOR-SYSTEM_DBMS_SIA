@@ -4,7 +4,7 @@ const router = require('express').Router();
 const controller = require('../controllers/scoreSubmissionController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
-<<<<<<< HEAD
+
 router.get('/', verifyToken, controller.getAll);
 router.get('/report/judges-vs-submissions', verifyToken, requireRole('admin'), controller.judgeSubmissionReport);
 router.get('/:id', verifyToken, controller.getById);
