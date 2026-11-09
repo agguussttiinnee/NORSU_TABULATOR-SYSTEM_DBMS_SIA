@@ -19,7 +19,7 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 
 | | Carl | Bernadette | Gretchen | Montessa | Izy | Resty |
 |---|---|---|---|---|---|---|
-| **Tables** | `events`, `participants`, `event_participants` | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | <HEAD's 6th cell> |
+| **Tables** | `events`, `participants`, `event_participants` | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | `score_submissions`, `score_revisions`, `audit_logs` |
 | **Endpoints** | `/api/events`, `/api/events/:id/participants` | `/api/colleges`, `/api/event-types`, `/api/venues` | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | | `/api/score-submissions`, `/api/score-revisions`, `/api/audit-logs` |
 | **Screens** | `events.html`, `participant-registration.html` | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | `judge-scoring.html`, `audit-logs.html` |
 | **Shared files** | `public/js/transaction-auth.js` | | | `public/js/layout.js`, `public/css/app.css` | | `utils/audit.js` |
