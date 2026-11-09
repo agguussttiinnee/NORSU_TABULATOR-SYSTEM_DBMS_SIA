@@ -4,9 +4,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 
 router.get('/', verifyToken, controller.getAll);
 router.get('/:id', verifyToken, controller.getById);
-router.post('/', verifyToken, requireRole('admin', 'judge'), controller.create);
-router.patch('/:id/approve', verifyToken, requireRole('admin'), controller.approve);
-router.patch('/:id/reject', verifyToken, requireRole('admin'), controller.reject);
-router.patch('/:id/cancel', verifyToken, controller.cancel);
+router.post('/', verifyToken, requireRole('judge'), controller.create);
+router.patch('/:id/decide', verifyToken, requireRole('admin'), controller.decide);
 
 module.exports = router;
