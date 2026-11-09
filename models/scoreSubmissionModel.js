@@ -1,4 +1,3 @@
-
 const db = require('../config/db');
 
 const getAll = async () => {
@@ -93,9 +92,7 @@ const submit = async (id, judgeId) => {
         );
 
         if (assignments.length === 0) {
-            const err = new Error(
-                'You do not own this submission'
-            );
+            const err = new Error('You do not own this submission');
             err.code = 'NOT_OWNER';
             throw err;
         }
@@ -115,17 +112,13 @@ const submit = async (id, judgeId) => {
         );
 
         if (Number(eventCounts[0].criteria_count) === 0) {
-            const err = new Error(
-                'This event has no scoring criteria yet'
-            );
+            const err = new Error('This event has no scoring criteria yet');
             err.code = 'NO_CRITERIA';
             throw err;
         }
 
         if (Number(eventCounts[0].participant_count) === 0) {
-            const err = new Error(
-                'This event has no registered participants yet'
-            );
+            const err = new Error('This event has no registered participants yet');
             err.code = 'NO_PARTICIPANTS';
             throw err;
         }
@@ -164,9 +157,7 @@ const submit = async (id, judgeId) => {
             [judgeId, eventId, eventId]
         );
 
-        const missingCount = Number(
-            missingScores[0].missing_count
-        );
+        const missingCount = Number(missingScores[0].missing_count);
 
         if (missingCount > 0) {
             const err = new Error(
@@ -189,9 +180,7 @@ const submit = async (id, judgeId) => {
         );
 
         if (result.affectedRows === 0) {
-            const err = new Error(
-                'Submission is already locked or submitted'
-            );
+            const err = new Error('Submission is already locked or submitted');
             err.code = 'ALREADY_SUBMITTED';
             throw err;
         }
@@ -217,29 +206,27 @@ const remove = async (id) => {
     return result.affectedRows;
 };
 
-
 // FULL OUTER JOIN (MySQL has none): LEFT JOIN UNION RIGHT JOIN
 const getJudgeSubmissionReport = async () => {
-  const [rows] = await db.query(
-    `SELECT ej.id AS event_judge_id, u.full_name AS judge_name, e.event_name,
-            ss.id AS submission_id, ss.status AS submission_status, ss.submitted_at
-     FROM event_judges ej
-     LEFT JOIN score_submissions ss ON ss.event_judge_id = ej.id
-     LEFT JOIN users u ON u.id = ej.user_id
-     LEFT JOIN events e ON e.id = ej.event_id
-     UNION
-     SELECT ej.id AS event_judge_id, u.full_name AS judge_name, e.event_name,
-            ss.id AS submission_id, ss.status AS submission_status, ss.submitted_at
-     FROM event_judges ej
-     RIGHT JOIN score_submissions ss ON ss.event_judge_id = ej.id
-     LEFT JOIN users u ON u.id = ej.user_id
-     LEFT JOIN events e ON e.id = ej.event_id`
-  );
-  return rows;
+    const [rows] = await db.query(
+        `SELECT ej.id AS event_judge_id, u.full_name AS judge_name, e.event_name,
+                ss.id AS submission_id, ss.status AS submission_status, ss.submitted_at
+         FROM event_judges ej
+         LEFT JOIN score_submissions ss ON ss.event_judge_id = ej.id
+         LEFT JOIN users u ON u.id = ej.user_id
+         LEFT JOIN events e ON e.id = ej.event_id
+         UNION
+         SELECT ej.id AS event_judge_id, u.full_name AS judge_name, e.event_name,
+                ss.id AS submission_id, ss.status AS submission_status, ss.submitted_at
+         FROM event_judges ej
+         RIGHT JOIN score_submissions ss ON ss.event_judge_id = ej.id
+         LEFT JOIN users u ON u.id = ej.user_id
+         LEFT JOIN events e ON e.id = ej.event_id`
+    );
+
+    return rows;
 };
 
-module.exports = { getAll, getById, create, submit, remove, getJudgeSubmissionReport };
-=======
 module.exports = {
     getAll,
     getAllByJudge,
@@ -247,6 +234,6 @@ module.exports = {
     getByIdWithAssignment,
     create,
     submit,
-    remove
+    remove,
+    getJudgeSubmissionReport
 };
->>>>>>> origin/main
