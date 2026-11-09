@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -65,7 +64,7 @@
             background: #17365d;
             color: white;
             cursor: pointer;
-            margin-right: 8px;
+            margin: 5px 8px 5px 0;
         }
 
         button:hover {
@@ -83,7 +82,7 @@
         }
 
         .hidden {
-            display: none;
+            display: none !important;
         }
 
         .table-wrapper {
@@ -144,6 +143,14 @@
             background: #475569;
         }
 
+        .revision-button {
+            background: #b45309;
+        }
+
+        .revision-button:hover {
+            background: #92400e;
+        }
+
         .note {
             color: #64748b;
             font-size: 13px;
@@ -189,6 +196,7 @@
             </p>
 
             <p id="scoringMessage" class="message"></p>
+            <p id="revisionMessage" class="message"></p>
         </div>
 
         <div class="card">
@@ -214,6 +222,13 @@
                 <button id="submitButton" class="secondary" onclick="submitScores()">
                     Submit Scores
                 </button>
+
+                <button
+                    id="revisionButton"
+                    class="revision-button hidden"
+                    onclick="requestRevision()">
+                    Request Revision
+                </button>
             </div>
         </div>
 
@@ -231,16 +246,19 @@
     const selectedEventName = document.getElementById('selectedEventName');
     const scoringMessage = document.getElementById('scoringMessage');
     const submissionStatus = document.getElementById('submissionStatus');
+    const revisionMessage = document.getElementById('revisionMessage');
     const tableHead = document.getElementById('tableHead');
     const tableBody = document.getElementById('tableBody');
     const saveButton = document.getElementById('saveButton');
     const submitButton = document.getElementById('submitButton');
+    const revisionButton = document.getElementById('revisionButton');
 
     let participants = [];
     let criteria = [];
     let scores = [];
     let currentSubmission = null;
     let currentEvent = null;
+    let revisionRequests = [];
 
     async function api(path, options = {}) {
         const response = await fetch(`${API}${path}`, {
@@ -296,6 +314,23 @@
                 ? 'Your assigned events have been loaded.'
                 : 'You currently have no assigned events.';
 
+            const requestedEventId =
+                new URLSearchParams(window.location.search).get('eventId');
+
+            if (requestedEventId) {
+                const matchingEvent = assignments.find(
+                    event => Number(event.event_id) === Number(requestedEventId)
+                );
+
+                if (matchingEvent) {
+                    eventSelect.value = String(matchingEvent.event_id);
+                    eventSelect.dispatchEvent(new Event('change'));
+                } else {
+                    eventMessage.textContent =
+                        'The requested event is not assigned to your account.';
+                }
+            }
+
         } catch (error) {
             eventMessage.textContent = error.message;
             eventSelect.innerHTML =
@@ -307,18 +342,25 @@
         try {
             scoringSection.classList.add('hidden');
             scoringMessage.textContent = 'Loading participants and criteria...';
+            revisionMessage.textContent = '';
 
             currentEvent = event;
 
-            const [participantData, criteriaData, submissions] =
-                await Promise.all([
-                    api(`/events/${event.event_id}/participants`),
-                    api(`/criteria/event/${event.event_id}`),
-                    api('/score-submissions')
-                ]);
+            const [
+                participantData,
+                criteriaData,
+                submissions,
+                revisionData
+            ] = await Promise.all([
+                api(`/events/${event.event_id}/participants`),
+                api(`/criteria/event/${event.event_id}`),
+                api('/score-submissions'),
+                api('/score-revisions')
+            ]);
 
             participants = participantData;
             criteria = criteriaData;
+            revisionRequests = revisionData;
 
             if (!participants.length) {
                 throw new Error('No participants are registered for this event.');
@@ -456,6 +498,7 @@
         tableBody.innerHTML = rows;
     }
 
+    // Updated: only a pending request hides the button.
     function updateSubmissionStatus() {
         const locked = currentSubmission.status === 'locked';
 
@@ -468,6 +511,97 @@
         document.querySelectorAll('.score-input').forEach(input => {
             input.disabled = locked;
         });
+
+        const submissionRequests = revisionRequests.filter(request =>
+            Number(request.score_submission_id) ===
+            Number(currentSubmission.id)
+        );
+
+        const pendingRequest = submissionRequests.find(
+            request => request.status === 'pending'
+        );
+
+        const latestRequest = submissionRequests
+            .sort((a, b) =>
+                new Date(b.created_at) - new Date(a.created_at)
+            )[0];
+
+        revisionButton.classList.add('hidden');
+
+        if (locked && !pendingRequest) {
+            revisionButton.classList.remove('hidden');
+        }
+
+        if (pendingRequest) {
+            revisionMessage.textContent =
+                'Your revision request is pending admin approval.';
+        } else if (latestRequest) {
+            revisionMessage.textContent =
+                `Previous revision request status: ${latestRequest.status}.`;
+        } else {
+            revisionMessage.textContent = '';
+        }
+    }
+
+    // Updated: allows another request after an approved or rejected request.
+    async function requestRevision() {
+        if (!currentSubmission ||
+            currentSubmission.status !== 'locked') {
+            revisionMessage.textContent =
+                'Only locked submissions can request revisions.';
+            return;
+        }
+
+        const pendingRequest = revisionRequests.find(request =>
+            Number(request.score_submission_id) ===
+                Number(currentSubmission.id) &&
+            request.status === 'pending'
+        );
+
+        if (pendingRequest) {
+            revisionMessage.textContent =
+                'You already have a pending revision request.';
+            return;
+        }
+
+        const reason = prompt(
+            'Please explain why you need to revise your scores:'
+        );
+
+        if (reason === null) {
+            return;
+        }
+
+        if (!reason.trim()) {
+            revisionMessage.textContent =
+                'Please provide a reason for your revision request.';
+            return;
+        }
+
+        try {
+            revisionButton.disabled = true;
+            revisionMessage.textContent = 'Submitting revision request...';
+
+            await api('/score-revisions', {
+                method: 'POST',
+                body: JSON.stringify({
+                    score_submission_id: currentSubmission.id,
+                    reason: reason.trim()
+                })
+            });
+
+            revisionRequests = await api('/score-revisions');
+
+            updateSubmissionStatus();
+
+            revisionMessage.textContent =
+                'Revision request submitted successfully! Please wait for admin approval.';
+
+        } catch (error) {
+            revisionMessage.textContent = error.message;
+        } finally {
+            revisionButton.disabled = false;
+        }
     }
 
     async function saveScores() {
