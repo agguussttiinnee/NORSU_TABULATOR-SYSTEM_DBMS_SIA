@@ -1,12 +1,12 @@
 const db = require('../config/db');
-
+ 
 // Create a revision request and record it in the audit log.
 const create = async (submissionId, requestedBy, reason) => {
     const connection = await db.getConnection();
-
+ 
     try {
         await connection.beginTransaction();
-
+ 
         const [result] = await connection.query(
             `INSERT INTO score_revisions
                 (score_submission_id, requested_by, reason)
@@ -19,12 +19,12 @@ const create = async (submissionId, requestedBy, reason) => {
                AND ss.status = 'locked'`,
             [reason, submissionId, requestedBy]
         );
-
+ 
         if (result.affectedRows === 0) {
             await connection.rollback();
             return null;
         }
-
+ 
         await connection.query(
             `INSERT INTO audit_logs
                 (user_id, action, table_name, record_id,
@@ -43,10 +43,10 @@ const create = async (submissionId, requestedBy, reason) => {
                 })
             ]
         );
-
+ 
         await connection.commit();
         return result.insertId;
-
+ 
     } catch (err) {
         await connection.rollback();
         throw err;
@@ -54,7 +54,7 @@ const create = async (submissionId, requestedBy, reason) => {
         connection.release();
     }
 };
-
+ 
 // Retrieve all revision requests.
 const getAll = async () => {
     const [rows] = await db.query(
@@ -69,10 +69,10 @@ const getAll = async () => {
              ON ej.id = ss.event_judge_id
          ORDER BY sr.created_at DESC`
     );
-
+ 
     return rows;
 };
-
+ 
 // Retrieve revision requests made by a judge.
 const getAllByJudge = async (judgeId) => {
     const [rows] = await db.query(
@@ -88,10 +88,10 @@ const getAllByJudge = async (judgeId) => {
          ORDER BY sr.created_at DESC`,
         [judgeId]
     );
-
+ 
     return rows;
 };
-
+ 
 // Retrieve one revision request.
 const getById = async (id) => {
     const [rows] = await db.query(
@@ -108,17 +108,17 @@ const getById = async (id) => {
          WHERE sr.id = ?`,
         [id]
     );
-
+ 
     return rows[0] || null;
 };
-
+ 
 // Approve or reject a revision request and record the decision.
 const decide = async (id, adminId, decision) => {
     const connection = await db.getConnection();
-
+ 
     try {
         await connection.beginTransaction();
-
+ 
         const [requests] = await connection.query(
             `SELECT sr.id,
                     sr.score_submission_id,
@@ -132,15 +132,15 @@ const decide = async (id, adminId, decision) => {
              FOR UPDATE`,
             [id]
         );
-
+ 
         if (requests.length === 0) {
             const err = new Error('Revision request not found');
             err.code = 'REVISION_NOT_FOUND';
             throw err;
         }
-
+ 
         const request = requests[0];
-
+ 
         if (request.status !== 'pending') {
             const err = new Error(
                 'This revision request has already been processed'
@@ -148,12 +148,12 @@ const decide = async (id, adminId, decision) => {
             err.code = 'REVISION_ALREADY_PROCESSED';
             throw err;
         }
-
+ 
         const oldValue = {
             revision_status: request.status,
             submission_status: request.submission_status
         };
-
+ 
         if (decision === 'approved') {
             if (request.submission_status !== 'locked') {
                 const err = new Error(
@@ -162,7 +162,7 @@ const decide = async (id, adminId, decision) => {
                 err.code = 'SUBMISSION_NOT_LOCKED';
                 throw err;
             }
-
+ 
             // Reopen only the submission associated with this request.
             const [result] = await connection.query(
                 `UPDATE score_submissions
@@ -173,7 +173,7 @@ const decide = async (id, adminId, decision) => {
                    AND status = 'locked'`,
                 [request.score_submission_id]
             );
-
+ 
             if (result.affectedRows === 0) {
                 const err = new Error(
                     'Submission could not be reopened'
@@ -182,7 +182,7 @@ const decide = async (id, adminId, decision) => {
                 throw err;
             }
         }
-
+ 
         await connection.query(
             `UPDATE score_revisions
              SET status = ?,
@@ -191,14 +191,14 @@ const decide = async (id, adminId, decision) => {
                AND status = 'pending'`,
             [decision, adminId, id]
         );
-
+ 
         const newValue = {
             revision_status: decision,
             submission_status:
                 decision === 'approved' ? 'draft' : 'locked',
             score_submission_id: request.score_submission_id
         };
-
+ 
         await connection.query(
             `INSERT INTO audit_logs
                 (user_id, action, table_name, record_id,
@@ -215,10 +215,10 @@ const decide = async (id, adminId, decision) => {
                 JSON.stringify(newValue)
             ]
         );
-
+ 
         await connection.commit();
         return true;
-
+ 
     } catch (err) {
         await connection.rollback();
         throw err;
@@ -226,7 +226,7 @@ const decide = async (id, adminId, decision) => {
         connection.release();
     }
 };
-
+ 
 module.exports = {
     create,
     getAll,
@@ -234,3 +234,4 @@ module.exports = {
     getById,
     decide
 };
+ 

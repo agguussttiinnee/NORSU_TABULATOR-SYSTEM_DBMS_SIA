@@ -1,237 +1,166 @@
 const Submission = require('../models/scoreSubmissionModel');
 const AuditLog = require('../models/auditLogModel');
 const { success, error } = require('../utils/response');
-
+ 
+const parseId = (value) => {
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : null;
+};
+ 
+// Get all submissions (admins see all, judges see their own)
 const getAll = async (req, res) => {
     try {
         let data;
-
+ 
         if (req.user.role === 'admin') {
             data = await Submission.getAll();
         } else if (req.user.role === 'judge') {
             data = await Submission.getAllByJudge(req.user.id);
         } else {
-            return error(
-                res,
-                'You do not have permission to view submissions',
-                403
-            );
+            return error(res, 'You do not have permission', 403);
         }
-
+ 
         return success(res, data, 'Submissions retrieved');
     } catch (err) {
         console.error('Get submissions error:', err);
         return error(res, 'Failed to retrieve submissions', 500);
     }
 };
-
+ 
+// Get one submission (admin or the judge who owns it)
 const getById = async (req, res) => {
     try {
-        const id = Number(req.params.id);
-
-        if (!Number.isInteger(id) || id <= 0) {
+        const id = parseId(req.params.id);
+ 
+        if (!id) {
             return error(res, 'Invalid submission ID', 400);
         }
-
+ 
         const submission = await Submission.getByIdWithAssignment(id);
-
+ 
         if (!submission) {
             return error(res, 'Submission not found', 404);
         }
-
+ 
         if (
             req.user.role !== 'admin' &&
             Number(submission.user_id) !== Number(req.user.id)
         ) {
-            return error(
-                res,
-                'You do not have permission to view this submission',
-                403
-            );
+            return error(res, 'You do not have permission', 403);
         }
-
+ 
         return success(res, submission, 'Submission retrieved');
     } catch (err) {
         console.error('Get submission error:', err);
         return error(res, 'Failed to retrieve submission', 500);
     }
 };
-
-// Create a submission for the logged-in judge's assignment.
+ 
+// Judge opens a submission for one of their event assignments
 const create = async (req, res) => {
     try {
-        const eventJudgeId = Number(req.body.event_judge_id);
-
-        if (!Number.isInteger(eventJudgeId) || eventJudgeId <= 0) {
+        const eventJudgeId = parseId(req.body.event_judge_id);
+ 
+        if (!eventJudgeId) {
             return error(res, 'Valid event_judge_id is required', 400);
         }
-
-        if (req.user.role !== 'judge') {
-            return error(
-                res,
-                'Only judges can create their submissions',
-                403
-            );
-        }
-
-        const id = await Submission.create(
-            eventJudgeId,
-            req.user.id
-        );
-
+ 
+        const id = await Submission.create(eventJudgeId, req.user.id);
+ 
         if (!id) {
             return error(
                 res,
-                'You are not assigned to this event',
+                'You can only create a submission for your own assignment',
                 403
             );
         }
-
+ 
         await AuditLog.log(
             req.user.id,
             'create',
             'score_submissions',
             id,
             null,
-            'draft'
+            JSON.stringify({ event_judge_id: eventJudgeId })
         );
-
+ 
         return success(res, { id }, 'Submission created', 201);
     } catch (err) {
         console.error('Create submission error:', err);
-
+ 
         if (err.code === 'ER_DUP_ENTRY') {
             return error(
                 res,
-                'This judge already has a submission for this event',
+                'A submission already exists for this assignment',
                 409
             );
         }
-
-        if (err.code === 'ER_NO_REFERENCED_ROW_2') {
-            return error(res, 'Event judge does not exist', 400);
-        }
-
+ 
         return error(res, 'Failed to create submission', 500);
     }
 };
-
-// Submit and lock the judge's scores.
+ 
+// Judge submits and locks their scores
 const submit = async (req, res) => {
     try {
-        const id = Number(req.params.id);
-
-        if (!Number.isInteger(id) || id <= 0) {
+        const id = parseId(req.params.id);
+ 
+        if (!id) {
             return error(res, 'Invalid submission ID', 400);
         }
-
-        if (req.user.role !== 'judge') {
-            return error(
-                res,
-                'Only judges can submit their scores',
-                403
-            );
-        }
-
-        const submission = await Submission.getByIdWithAssignment(id);
-
-        if (!submission) {
-            return error(res, 'Submission not found', 404);
-        }
-
-        if (Number(submission.user_id) !== Number(req.user.id)) {
-            return error(
-                res,
-                'You do not own this submission',
-                403
-            );
-        }
-
+ 
         await Submission.submit(id, req.user.id);
-
-        const updated = await Submission.getById(id);
-
+ 
         await AuditLog.log(
             req.user.id,
-            'lock',
+            'submit',
             'score_submissions',
             id,
-            submission.status,
+            'draft',
             'locked'
         );
-
-        return success(
-            res,
-            updated,
-            'Submission submitted and locked'
-        );
+ 
+        return success(res, { id, status: 'locked' }, 'Scores submitted and locked');
     } catch (err) {
-        console.error('Submit scores error:', err);
-
-        if (err.code === 'SUBMISSION_NOT_FOUND') {
-            return error(res, 'Submission not found', 404);
+        console.error('Submit error:', err);
+ 
+        switch (err.code) {
+            case 'SUBMISSION_NOT_FOUND':
+                return error(res, err.message, 404);
+            case 'NOT_OWNER':
+                return error(res, err.message, 403);
+            case 'NO_CRITERIA':
+            case 'NO_PARTICIPANTS':
+            case 'WEIGHTS_NOT_COMPLETE':
+            case 'SCORES_INCOMPLETE':
+                return error(res, err.message, 400);
+            case 'ALREADY_SUBMITTED':
+                return error(res, err.message, 409);
+            default:
+                return error(res, 'Failed to submit scores', 500);
         }
-
-        if (err.code === 'NOT_OWNER') {
-            return error(
-                res,
-                'You do not own this submission',
-                403
-            );
-        }
-
-        if (err.code === 'NO_CRITERIA' ||
-            err.code === 'NO_PARTICIPANTS' ||
-            err.code === 'WEIGHTS_NOT_COMPLETE' ||
-            err.code === 'SCORES_INCOMPLETE') {
-            return error(res, err.message, 400);
-        }
-
-        if (err.code === 'ALREADY_SUBMITTED') {
-            return error(
-                res,
-                'Submission is already locked or submitted',
-                409
-            );
-        }
-
-        return error(res, 'Failed to submit scores', 500);
     }
 };
-
-// Delete a draft submission.
+ 
+// Admin deletes a draft submission
 const remove = async (req, res) => {
     try {
-        const id = Number(req.params.id);
-
-        if (!Number.isInteger(id) || id <= 0) {
+        const id = parseId(req.params.id);
+ 
+        if (!id) {
             return error(res, 'Invalid submission ID', 400);
         }
-
-        const submission = await Submission.getById(id);
-
-        if (!submission) {
-            return error(res, 'Submission not found', 404);
-        }
-
-        if (submission.status !== 'draft') {
+ 
+        const deleted = await Submission.remove(id);
+ 
+        if (!deleted) {
             return error(
                 res,
-                'Submitted or locked submissions cannot be deleted',
-                403
+                'Submission not found or is no longer a draft',
+                404
             );
         }
-
-        const affectedRows = await Submission.remove(id);
-
-        if (!affectedRows) {
-            return error(
-                res,
-                'Submission could not be deleted',
-                409
-            );
-        }
-
+ 
         await AuditLog.log(
             req.user.id,
             'delete',
@@ -240,30 +169,25 @@ const remove = async (req, res) => {
             'draft',
             null
         );
-
-        return success(res, null, 'Submission deleted');
+ 
+        return success(res, { id }, 'Submission deleted');
     } catch (err) {
         console.error('Delete submission error:', err);
         return error(res, 'Failed to delete submission', 500);
     }
 };
-
-// FULL OUTER JOIN report for assigned judges and submissions.
+ 
+// Admin report: judges vs. submissions (FULL OUTER JOIN)
 const judgeSubmissionReport = async (req, res) => {
     try {
         const data = await Submission.getJudgeSubmissionReport();
-
-        return success(
-            res,
-            data,
-            'Judge submission report retrieved'
-        );
+        return success(res, data, 'Judge submission report retrieved');
     } catch (err) {
         console.error('Judge submission report error:', err);
-        return error(res, 'Failed to retrieve judge submission report', 500);
+        return error(res, 'Failed to retrieve report', 500);
     }
 };
-
+ 
 module.exports = {
     getAll,
     getById,
@@ -272,3 +196,4 @@ module.exports = {
     remove,
     judgeSubmissionReport
 };
+ 

@@ -19,11 +19,11 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 
 | | Carl | Bernadette | Gretchen | Montessa | Izy | Resty |
 |---|---|---|---|---|---|---|
-| **Tables** | `events`, `participants`, `event_participants` | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | |
-| **Endpoints** | `/api/events`, `/api/events/:id/participants` | `/api/colleges`, `/api/event-types`, `/api/venues` | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | | |
-| **Screens** | `events.html`, `participant-registration.html` | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | |
-| **Shared files** | `public/js/transaction-auth.js` | | | `public/js/layout.js`, `public/css/app.css` | | |
-| **Join report** | `GET /api/events/:id/participants` (INNER JOIN of `event_participants`, `events`, `participants` and `colleges`) | `GET /api/colleges/report/no-participants` (LEFT JOIN) | `GET /api/awards/leaderboard` (INNER join) | `GET /api/event-judges/report` (INNER join) | | |
+| **Tables** | `events`, `participants`, `event_participants` | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | <HEAD's 6th cell> |
+| **Endpoints** | `/api/events`, `/api/events/:id/participants` | `/api/colleges`, `/api/event-types`, `/api/venues` | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | | `/api/score-submissions`, `/api/score-revisions`, `/api/audit-logs` |
+| **Screens** | `events.html`, `participant-registration.html` | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | `judge-scoring.html`, `audit-logs.html` |
+| **Shared files** | `public/js/transaction-auth.js` | | | `public/js/layout.js`, `public/css/app.css` | | `utils/audit.js` |
+| **Join report** | `GET /api/events/:id/participants` (INNER JOIN of `event_participants`, `events`, `participants` and `colleges`) | `GET /api/colleges/report/no-participants` (LEFT JOIN) | `GET /api/awards/leaderboard` (INNER join) | `GET /api/event-judges/report` (INNER join) | | `GET /api/score-submissions/report/judges-vs-submissions` (FULL OUTER JOIN) |
 | **Progress** | | | | | | |
 
 
