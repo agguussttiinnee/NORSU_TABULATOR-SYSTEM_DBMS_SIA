@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Score Revision Requests - NORSU Tabulator</title>
+    <link rel="stylesheet" href="/css/app.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 25px;
+            background: var(--nt-page, #f4f6f9);
+            color: var(--nt-text, #222);
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 25px auto;
+        }
+
+        .panel {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .message {
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .success {
+            background: #e7f7ed;
+            color: #176b36;
+        }
+
+        .error {
+            background: #fdeaea;
+            color: #a32121;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 850px;
+        }
+
+        th, td {
+            padding: 13px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #f5f5f5;
+        }
+
+        button {
+            border: none;
+            padding: 9px 13px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 3px;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .approve {
+            background: #198754;
+        }
+
+        .reject {
+            background: #dc3545;
+        }
+
+        .refresh {
+            background: #333;
+        }
+
+        .status {
+            font-weight: bold;
+            text-transform: capitalize;
+        }
+
+        .empty {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div
+        id="app-header"
+        data-title="Score Revision Requests"
+        data-subtitle="Review and manage judges' revision requests"
+        data-role="admin">
+    </div>
+
+    <main>
+
+        <section class="panel">
+            <h2>Revision Requests</h2>
+
+            <p>
+                Review requests submitted by judges.
+                Approving a request reopens only the associated locked submission.
+            </p>
+
+            <button type="button" class="refresh" id="refreshBtn">
+                Refresh List
+            </button>
+
+            <div id="message" class="message"></div>
+        </section>
+
+        <section class="panel">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Request ID</th>
+                            <th>Submission ID</th>
+                            <th>Judge ID</th>
+                            <th>Event ID</th>
+                            <th>Reason</th>
+                            <th>Request Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="revisionTable">
+                        <tr>
+                            <td colspan="7" class="empty">
+                                Loading revision requests...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="/js/layout.js"></script>
+    <script src="/js/transaction-auth.js"></script>
+
+    <script>
+        const table = document.getElementById('revisionTable');
+        const message = document.getElementById('message');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = 'message ' + type;
+            message.style.display = 'block';
+        }
+
+        function hideMessage() {
+            message.style.display = 'none';
+        }
+
+        function createCell(value) {
+            const td = document.createElement('td');
+            td.textContent = value ?? '-';
+            return td;
+        }
+
+        async function loadRevisions() {
+            hideMessage();
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="7" class="empty">
+                        Loading revision requests...
+                    </td>
+                </tr>
+            `;
+
+            try {
+                await window.NorsuTransaction.requireAdmin();
+
+                const revisions = await window.NorsuTransaction.api(
+                    '/score-revisions'
+                );
+
+                table.innerHTML = '';
+
+                if (!Array.isArray(revisions) || revisions.length === 0) {
+                    table.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="empty">
+                                No revision requests found.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                revisions.forEach(function (revision) {
+                    const tr = document.createElement('tr');
+
+                    tr.appendChild(createCell(revision.id));
+                    tr.appendChild(createCell(revision.score_submission_id));
+                    tr.appendChild(createCell(revision.judge_id));
+                    tr.appendChild(createCell(revision.event_id));
+                    tr.appendChild(createCell(revision.reason));
+
+                    const statusCell = createCell(revision.status);
+                    statusCell.className = 'status';
+                    tr.appendChild(statusCell);
+
+                    const actions = document.createElement('td');
+
+                    if (revision.status === 'pending') {
+                        const approveBtn = document.createElement('button');
+                        approveBtn.textContent = 'Approve';
+                        approveBtn.className = 'approve';
+
+                        approveBtn.addEventListener('click', function () {
+                            decideRevision(revision.id, 'approved', approveBtn, rejectBtn);
+                        });
+
+                        const rejectBtn = document.createElement('button');
+                        rejectBtn.textContent = 'Reject';
+                        rejectBtn.className = 'reject';
+
+                        rejectBtn.addEventListener('click', function () {
+                            decideRevision(revision.id, 'rejected', approveBtn, rejectBtn);
+                        });
+
+                        actions.appendChild(approveBtn);
+                        actions.appendChild(rejectBtn);
+                    } else {
+                        actions.textContent = 'Already processed';
+                    }
+
+                    tr.appendChild(actions);
+                    table.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error(error);
+
+                table.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty">
+                            Failed to load revision requests.
+                        </td>
+                    </tr>
+                `;
+
+                showMessage(error.message || 'Failed to load revision requests.', 'error');
+            }
+        }
+
+        async function decideRevision(id, decision, approveBtn, rejectBtn) {
+            const action = decision === 'approved' ? 'approve' : 'reject';
+
+            const confirmed = confirm(
+                'Are you sure you want to ' + action +
+                ' revision request #' + id + '?'
+            );
+
+            if (!confirmed) return;
+
+            approveBtn.disabled = true;
+            rejectBtn.disabled = true;
+
+            try {
+                await window.NorsuTransaction.api(
+                    '/score-revisions/' + id + '/decision',
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            decision: decision
+                        })
+                    }
+                );
+
+                showMessage(
+                    'Revision request #' + id + ' was ' + decision + ' successfully.',
+                    'success'
+                );
+
+                await loadRevisions();
+
+            } catch (error) {
+                console.error(error);
+
+                showMessage(
+                    error.message || 'Failed to process revision request.',
+                    'error'
+                );
+
+                approveBtn.disabled = false;
+                rejectBtn.disabled = false;
+            }
+        }
+
+        refreshBtn.addEventListener('click', loadRevisions);
+
+        loadRevisions();
+    </script>
+
+</body>
+</html>

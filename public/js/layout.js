@@ -17,6 +17,7 @@
   var MENUS = {
     admin: [
       { label: 'Events', href: '/events.html' },
+      { label: 'Criteria Setup', href: '/criteria-setup.html' },
       { label: 'Colleges', href: '/colleges.html' },
       { label: 'Participant registration', href: '/participant-registration.html' },
       { label: 'Awards', href: '/awards.html' },
@@ -27,7 +28,11 @@
       { label: 'My events', href: '/judge-home.html' }
     ]
   };
-  var HOME = { admin: '/events.html', judge: '/judge-home.html' };
+
+  var HOME = {
+    admin: '/events.html',
+    judge: '/judge-home.html'
+  };
 
   function readUser() {
     try {
@@ -45,7 +50,7 @@
   function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-    localStorage.removeItem('token'); // copy that the Events page keeps
+    localStorage.removeItem('token');
   }
 
   function logout() {
@@ -56,7 +61,7 @@
   function el(tag, className, text) {
     var node = document.createElement(tag);
     if (className) node.className = className;
-    if (text) node.textContent = text; // textContent keeps names from running as HTML
+    if (text) node.textContent = text;
     return node;
   }
 
@@ -71,7 +76,7 @@
     // Not logged in, or the saved session is unreadable: go to the login page.
     if (!token || !role) {
       clearSession();
-      window.location.href = LOGIN_PAGE;
+      window.location.href = LOGIN_PAGE + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
       return;
     }
 
@@ -87,16 +92,29 @@
 
     var topline = el('div', 'nt-topline');
     var titleBox = el('div');
-    titleBox.appendChild(el('h1', 'nt-title', host.getAttribute('data-title') || 'NORSU Tabulator System'));
+
+    titleBox.appendChild(
+      el('h1', 'nt-title', host.getAttribute('data-title') || 'NORSU Tabulator System')
+    );
+
     var subtitle = host.getAttribute('data-subtitle');
-    if (subtitle) titleBox.appendChild(el('p', 'nt-subtitle', subtitle));
+
+    if (subtitle) {
+      titleBox.appendChild(el('p', 'nt-subtitle', subtitle));
+    }
 
     var userBox = el('div', 'nt-user');
-    userBox.appendChild(el('span', 'nt-user-name', user.full_name || user.email || 'User'));
+
+    userBox.appendChild(
+      el('span', 'nt-user-name', user.full_name || user.email || 'User')
+    );
+
     userBox.appendChild(el('span', 'nt-user-role', role));
+
     var logoutBtn = el('button', 'nt-logout', 'Log out');
     logoutBtn.type = 'button';
     logoutBtn.addEventListener('click', logout);
+
     userBox.appendChild(logoutBtn);
 
     topline.appendChild(titleBox);
@@ -104,22 +122,30 @@
 
     var nav = el('nav', 'nt-nav');
     nav.setAttribute('aria-label', 'Main menu');
+
     MENUS[role].forEach(function (item) {
       var link = el('a', '', item.label);
       link.href = item.href;
-      if (window.location.pathname === item.href) link.setAttribute('aria-current', 'page');
+
+      if (window.location.pathname === item.href) {
+        link.setAttribute('aria-current', 'page');
+      }
+
       nav.appendChild(link);
     });
 
     inner.appendChild(topline);
     inner.appendChild(nav);
     header.appendChild(inner);
+
     host.replaceWith(header);
   }
 
   // Other scripts can use these, for example to send the token with fetch.
   window.NorsuAuth = {
-    getToken: function () { return localStorage.getItem(TOKEN_KEY); },
+    getToken: function () {
+      return localStorage.getItem(TOKEN_KEY);
+    },
     getUser: readUser,
     logout: logout
   };

@@ -19,11 +19,11 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 
 | | Carl | Bernadette | Gretchen | Montessa | Izy | Resty |
 |---|---|---|---|---|---|---|
-| *Tables* | | colleges, event_types, venues | award_categories, awards | roles, users, event_judges | | score_submissions, score_revisions, audit_logs |
-| *Endpoints* | | /api/colleges, /api/event-types, /api/venues | /api/awards | /api/auth, /api/users, /api/event-judges | | /api/score-submissions, /api/score-revisions, /api/audit-logs |
-| *Screens* | | colleges.html | awards.html | login.html, judge-home.html, users.html, judge-assignment.html | | judge-scoring.html, audit-logs.html |
-| *Shared files* | | | | public/js/layout.js, public/css/app.css | | utils/audit.js |
-| *Join report* | | GET /api/colleges/report/no-participants (LEFT JOIN) | GET /api/awards/leaderboard (INNER join) | GET /api/event-judges/report (INNER join) | | GET /api/score-submissions/report/judges-vs-submissions (FULL OUTER JOIN) |
+| **Tables** | `events`, `participants`, `event_participants` | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | | <HEAD's 6th cell> |
+| **Endpoints** | `/api/events`, `/api/events/:id/participants` | `/api/colleges`, `/api/event-types`, `/api/venues` | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | | `/api/score-submissions`, `/api/score-revisions`, `/api/audit-logs` |
+| **Screens** | `events.html`, `participant-registration.html` | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | | `judge-scoring.html`, `audit-logs.html` |
+| **Shared files** | `public/js/transaction-auth.js` | | | `public/js/layout.js`, `public/css/app.css` | | `utils/audit.js` |
+| **Join report** | `GET /api/events/:id/participants` (INNER JOIN of `event_participants`, `events`, `participants` and `colleges`) | `GET /api/colleges/report/no-participants` (LEFT JOIN) | `GET /api/awards/leaderboard` (INNER join) | `GET /api/event-judges/report` (INNER join) | | `GET /api/score-submissions/report/judges-vs-submissions` (FULL OUTER JOIN) |
 | **Progress** | | | | | | |
 
 
@@ -51,6 +51,16 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 | `POST /api/awards` | admin | Creates an award (the rank must be free for that event and category) |
 | `PUT` or `PATCH /api/awards/:id` | admin | Updates an award; every field is optional |
 | `DELETE /api/awards/:id` | admin | Soft-deletes an award; its rank can be used again |
+| `GET /api/events/lookups` | admin | Lists event types, venues and colleges for the dropdowns |
+| `GET /api/events/participants` | admin | Lists existing participants so one can be reused |
+| `GET /api/events` | admin | Lists active events |
+| `GET /api/events/:id` | admin | Returns one event |
+| `POST /api/events` | admin | Creates an event |
+| `PUT` or `PATCH /api/events/:id` | admin | Updates an event; every field is optional |
+| `DELETE /api/events/:id` | admin | Soft-deletes an event |
+| `GET /api/events/:id/participants` | admin, judge | Roster for an event (INNER JOIN of `event_participants`, `events`, `participants` and `colleges`); a judge must be assigned to that event |
+| `POST /api/events/:id/participants` | admin | Registers a participant in one transaction; returns 409 if the entry number or participant is already in the event |
+| `DELETE /api/events/:id/participants/:registrationId` | admin | Removes a registration |
 
 Status codes used: `400` bad input, `401` missing or expired token, `403` not an admin, `404` not found, `409` duplicate (email already used, or judge already assigned), `201` created.
 
@@ -63,6 +73,8 @@ Status codes used: `400` bad input, `401` missing or expired token, `403` not an
 | `/users.html` | admin | List, add, edit and delete users |
 | `/judge-assignment.html` | admin | Assign and remove judges, and shows the judges-per-event report |
 | `/awards.html` | admin | Shows the leaderboard and lets you add, edit and delete awards |
+| `/events.html` | admin | List, add, edit and delete events |
+| `/participant-registration.html` | admin | Registers a participant for an event and shows the event roster |
 
 ### Shared layout
 

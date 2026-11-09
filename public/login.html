@@ -200,7 +200,26 @@
         if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
 
         const role = readRole(user);
-        window.location.href = role === 'judge' ? JUDGE_PAGE : ADMIN_PAGE;
+        const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
+
+        let destination = role === 'judge' ? JUDGE_PAGE : ADMIN_PAGE;
+
+        if (returnUrl) {
+          try {
+            const target = new URL(returnUrl, window.location.origin);
+
+            if (
+              target.origin === window.location.origin &&
+              target.pathname !== '/login.html'
+            ) {
+              destination = target.pathname + target.search + target.hash;
+            }
+          } catch (err) {
+            // Use the user's default page if the return URL is invalid.
+          }
+        }
+
+        window.location.href = destination;
       } catch (err) {
         showMessage('Cannot reach the server. Make sure it is running, then try again.', true);
       } finally {

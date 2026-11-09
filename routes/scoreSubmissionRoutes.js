@@ -1,14 +1,41 @@
 const router = require('express').Router();
 const controller = require('../controllers/scoreSubmissionController');
 const { verifyToken, requireRole } = require('../middleware/auth');
-
+ 
 router.use(verifyToken);
-
+ 
 router.get('/', controller.getAll);
-router.get('/report/judges-vs-submissions', requireRole('admin'), controller.judgeSubmissionReport);
+ 
+// Admin report (must come before '/:id')
+router.get(
+    '/report/judges-vs-submissions',
+    requireRole('admin'),
+    controller.judgeSubmissionReport
+);
+ 
+// Retrieve one submission
 router.get('/:id', controller.getById);
-router.post('/', requireRole('judge'), controller.create);
-router.patch('/:id/submit', requireRole('judge'), controller.submit);
-router.delete('/:id', requireRole('admin'), controller.remove);
-
+ 
+// Only judges can create submissions
+router.post(
+    '/',
+    requireRole('judge'),
+    controller.create
+);
+ 
+// Only judges can submit and lock scores
+router.patch(
+    '/:id/submit',
+    requireRole('judge'),
+    controller.submit
+);
+ 
+// Only admins can delete draft submissions
+router.delete(
+    '/:id',
+    requireRole('admin'),
+    controller.remove
+);
+ 
 module.exports = router;
+ 
