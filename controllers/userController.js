@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/userModel');
 const { success, error } = require('../utils/response');
+const { logAudit } = require('../utils/audit');
 
 exports.list = async (req, res, next) => {
   try {
@@ -22,12 +23,14 @@ exports.create = async (req, res, next) => {
     if (!role_id || !full_name || !email || !password) {
       return error(res, 'role_id, full_name, email and password are required', 400);
     }
-    if (password.length < 8) return error(res, 'Password must be at least 8 characters', 400);
+    if (password.length < 8 )return error(res, 'Password must be at least 8 characters', 400);
     if (!(await User.roleExists(role_id))) return error(res, 'Invalid role_id', 400);
 
     const password_hash = await bcrypt.hash(password, 10);
     const id = await User.create({ role_id, full_name, email, password_hash });
-    return success(res, await User.findById(id), 'User created', 201);
+    const created = await User.findById(id);
+    await logAudit(req.user.id, 'CREATE', 'users', id, null, created);
+    return success(res, created, 'User created', 201);
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') return error(res, 'Email is already in use', 409);
     next(e);
@@ -50,9 +53,12 @@ exports.update = async (req, res, next) => {
     }
     if (!Object.keys(fields).length) return error(res, 'Nothing to update', 400);
 
+    const before = await User.findById(req.params.id);
     const affected = await User.update(req.params.id, fields);
     if (!affected) return error(res, 'User not found', 404);
-    return success(res, await User.findById(req.params.id), 'User updated');
+    const after = await User.findById(req.params.id);
+    await logAudit(req.user.id, 'UPDATE', 'users', req.params.id, before, after);
+    return success(res, after, 'User updated');
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') return error(res, 'Email is already in use', 409);
     next(e);
@@ -64,8 +70,10 @@ exports.remove = async (req, res, next) => {
     if (Number(req.params.id) === req.user.id) {
       return error(res, 'You cannot delete your own account', 400);
     }
+    const before = await User.findById(req.params.id);
     const affected = await User.softDelete(req.params.id);
     if (!affected) return error(res, 'User not found', 404);
+    await logAudit(req.user.id, 'DELETE', 'users', req.params.id, before, null);
     return success(res, null, 'User deleted');
   } catch (e) { next(e); }
 };

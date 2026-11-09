@@ -1,4 +1,3 @@
-
 const router = require('express').Router();
 
 const controller = require('../controllers/scoreRevisionController');
@@ -6,7 +5,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 
 router.use(verifyToken);
 
-// Judges and admins can view revision requests
+// View revision requests
 router.get('/', controller.getAll);
 router.get('/:id', controller.getById);
 

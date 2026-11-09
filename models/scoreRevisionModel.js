@@ -45,8 +45,8 @@ const create = async (submissionId, requestedBy, reason) => {
         );
 
         await connection.commit();
-
         return result.insertId;
+
     } catch (err) {
         await connection.rollback();
         throw err;
@@ -217,8 +217,8 @@ const decide = async (id, adminId, decision) => {
         );
 
         await connection.commit();
-
         return true;
+
     } catch (err) {
         await connection.rollback();
         throw err;

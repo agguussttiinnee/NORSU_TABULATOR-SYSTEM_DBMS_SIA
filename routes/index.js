@@ -26,6 +26,11 @@ router.use('/scores', require('./scoreRoutes'));
 // ---- Resty: Workflow + Audit ----
 router.use('/score-submissions', require('./scoreSubmissionRoutes'));
 router.use('/score-revisions', require('./scoreRevisionRoutes'));
+<<<<<<< HEAD
+router.use('/audit-logs', require('./auditLogRoutes'));
+
+=======
+>>>>>>> origin/main
 
 // ---- Gretchen: Reports ----
 router.use('/awards', require('./awardRoutes'));

@@ -1,4 +1,3 @@
-
 const Revision = require('../models/scoreRevisionModel');
 const { success, error } = require('../utils/response');
 
@@ -148,8 +147,10 @@ const decide = async (req, res) => {
             return error(res, 'Revision request already processed', 409);
         }
 
-        if (err.code === 'SUBMISSION_NOT_LOCKED' ||
-            err.code === 'REOPEN_FAILED') {
+        if (
+            err.code === 'SUBMISSION_NOT_LOCKED' ||
+            err.code === 'REOPEN_FAILED'
+        ) {
             return error(res, err.message, 409);
         }
 
