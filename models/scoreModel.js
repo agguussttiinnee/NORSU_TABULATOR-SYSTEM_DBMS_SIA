@@ -564,3 +564,66 @@ exports.findMissingScoresByEvent = async (eventId) => {
 
     return rows;
 };
+
+// Delete score only when the judge's event submission is not locked
+exports.deleteWithLock = async ({
+    id,
+    judge_id,
+    event_id
+}) => {
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const [assignments] = await connection.query(
+            `SELECT id
+             FROM event_judges
+             WHERE user_id = ? AND event_id = ?
+             FOR UPDATE`,
+            [judge_id, event_id]
+        );
+
+        if (assignments.length === 0) {
+            const err = new Error('You are not assigned to this event');
+            err.code = 'NOT_ASSIGNED';
+            throw err;
+        }
+
+        const [submissions] = await connection.query(
+            `SELECT id
+             FROM score_submissions
+             WHERE event_judge_id = ? AND status = 'locked'`,
+            [assignments[0].id]
+        );
+
+        if (submissions.length > 0) {
+            const err = new Error('Your scores for this event are already locked');
+            err.code = 'SCORE_LOCKED';
+            throw err;
+        }
+
+        const [result] = await connection.query(
+            `DELETE FROM scores
+             WHERE id = ? AND judge_id = ?`,
+            [id, judge_id]
+        );
+
+        if (result.affectedRows === 0) {
+            const err = new Error('Score not found');
+            err.code = 'SCORE_NOT_FOUND';
+            throw err;
+        }
+
+        await connection.commit();
+
+        return result.affectedRows;
+
+    } catch (err) {
+        await connection.rollback();
+        throw err;
+
+    } finally {
+        connection.release();
+    }
+};

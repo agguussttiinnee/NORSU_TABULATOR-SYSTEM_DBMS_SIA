@@ -221,6 +221,59 @@ exports.update = async (req, res) => {
     }
 };
 
+// Delete score
+exports.delete = async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        const judgeId = req.user.id;
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return error(res, 'Invalid score ID', 400);
+        }
+
+        const existing = await scores.findById(id);
+
+        if (!existing || Number(existing.judge_id) !== Number(judgeId)) {
+            return error(res, 'Score not found', 404);
+        }
+
+        const criterion = await criteria.findById(existing.criterion_id);
+
+        if (!criterion) {
+            return error(res, 'Criterion not found', 404);
+        }
+
+        const affectedRows = await scores.deleteWithLock({
+            id,
+            judge_id: judgeId,
+            event_id: criterion.event_id
+        });
+
+        if (!affectedRows) {
+            return error(res, 'Score not found', 404);
+        }
+
+        return success(res, null, 'Score deleted successfully');
+
+    } catch (err) {
+        console.error('Delete score error:', err);
+
+        if (err.code === 'NOT_ASSIGNED') {
+            return error(res, 'You are not assigned to this event', 403);
+        }
+
+        if (err.code === 'SCORE_LOCKED') {
+            return error(res, 'Your scores for this event are already locked', 403);
+        }
+
+        if (err.code === 'SCORE_NOT_FOUND') {
+            return error(res, 'Score not found', 404);
+        }
+
+        return error(res, 'Failed to delete score', 500);
+    }
+};
+
 exports.getEventRankings = async (req, res) => {
     try {
         const eventId = Number(req.params.eventId);
