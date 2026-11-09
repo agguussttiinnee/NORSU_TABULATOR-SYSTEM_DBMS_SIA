@@ -5,20 +5,626 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>NORSU Tabulator | Criteria Setup</title>
     <link rel="stylesheet" href="/css/app.css">
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--nt-page);
+            color: var(--nt-text);
+            font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
+        }
+
+        main {
+            max-width: 1180px;
+            margin: 24px auto;
+            padding: 0 20px 40px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid var(--nt-line);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 6px 24px #152b4c0a;
+        }
+
+        h2 {
+            margin: 0 0 14px;
+            font-size: 19px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin: 12px 0 5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 11px;
+            border: 1px solid #cbd5e3;
+            border-radius: 9px;
+            font: inherit;
+            background: #fff;
+            color: var(--nt-text);
+        }
+
+        input:focus, select:focus {
+            outline: 3px solid #b9d4ff;
+            border-color: var(--nt-blue);
+        }
+
+        button {
+            border: 0;
+            background: var(--nt-blue);
+            color: #fff;
+            padding: 10px 13px;
+            border-radius: 9px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+
+        button.secondary {
+            background: #e8eef8;
+            color: #23436f;
+        }
+
+        button.danger {
+            background: #a6313a;
+        }
+
+        button.small {
+            padding: 6px 9px;
+            font-size: 13px;
+            margin: 2px;
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .muted {
+            color: var(--nt-muted);
+            font-size: 13px;
+        }
+
+        .notice {
+            padding: 10px 12px;
+            border-radius: 9px;
+            margin: 0 0 18px;
+            background: #edf4ff;
+            color: #173b76;
+            white-space: pre-wrap;
+        }
+
+        .notice.error {
+            background: #fff0f0;
+            color: #8c2028;
+        }
+
+        .weight-box {
+            background: #f5f8fd;
+            border: 1px solid #e2eaf5;
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+        }
+
+        .weight-number {
+            font-size: 25px;
+            font-weight: 800;
+        }
+
+        .weight-number.valid {
+            color: #16834a;
+        }
+
+        .weight-number.invalid {
+            color: #a6313a;
+        }
+
+        .progress {
+            height: 9px;
+            background: #e2e8f0;
+            border-radius: 99px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background: var(--nt-blue);
+            transition: width .2s;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 10px 9px;
+            text-align: left;
+            border-bottom: 1px solid #e8edf5;
+            vertical-align: middle;
+        }
+
+        th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #5d6d86;
+            background: #f8faff;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: #eef2f8;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 850px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-    <div id="app-header"
-         data-title="NORSU Tabulator System"
-         data-subtitle="Criteria Setup · Rules module"
-         data-role="admin">
+<div id="app-header"
+     data-title="NORSU Tabulator System"
+     data-subtitle="Criteria Setup · Rules module"
+     data-role="admin">
+</div>
+
+<main>
+
+    <div id="notice" class="notice">
+        Checking your administrator session…
     </div>
 
-    <main>
-        <!-- Criteria Setup content goes here -->
-    </main>
+    <section class="card" style="margin-bottom:18px;">
+        <label for="eventSelect">Select event</label>
+        <select id="eventSelect">
+            <option value="">Loading events...</option>
+        </select>
+        <p class="muted">
+            Select an event to manage its judging criteria.
+        </p>
+    </section>
 
-    <script src="/js/layout.js"></script>
-    <script src="/js/transaction-auth.js"></script>
+    <div class="grid">
+
+        <section class="card">
+
+            <h2 id="formTitle">Add criterion</h2>
+
+            <form id="criteriaForm">
+
+                <input type="hidden" id="criterionId">
+
+                <label for="criterionName">Criterion name</label>
+                <input
+                    type="text"
+                    id="criterionName"
+                    maxlength="100"
+                    required
+                    placeholder="e.g. Beauty and Poise"
+                >
+
+                <label for="criterionWeight">Weight (%)</label>
+                <input
+                    type="number"
+                    id="criterionWeight"
+                    min="0.01"
+                    max="100"
+                    step="0.01"
+                    required
+                    placeholder="e.g. 30"
+                >
+
+                <label for="maxScore">Maximum score</label>
+                <input
+                    type="number"
+                    id="maxScore"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    placeholder="e.g. 100"
+                >
+
+                <div class="actions">
+                    <button type="submit" id="saveButton">
+                        Add criterion
+                    </button>
+
+                    <button
+                        type="button"
+                        class="secondary"
+                        id="cancelButton"
+                        hidden
+                    >
+                        Cancel edit
+                    </button>
+                </div>
+
+                <p class="muted">
+                    The total weight of all criteria must not exceed 100%.
+                </p>
+
+            </form>
+
+        </section>
+
+        <section class="card">
+
+            <h2>Event criteria</h2>
+
+            <div class="weight-box">
+                <div class="muted">Total criteria weight</div>
+
+                <div class="weight-number" id="weightTotal">
+                    0.00%
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar" id="weightBar"></div>
+                </div>
+
+                <p class="muted" id="weightMessage">
+                    Select an event to view its total weight.
+                </p>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Criterion</th>
+                            <th>Weight</th>
+                            <th>Max score</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="criteriaBody">
+                        <tr>
+                            <td colspan="5" class="muted">
+                                Select an event first.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </section>
+
+    </div>
+
+</main>
+
+<script src="/js/layout.js"></script>
+<script src="/js/transaction-auth.js"></script>
+
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+const api = window.NorsuTransaction.api;
+
+let currentEventId = '';
+let criteriaList = [];
+
+function show(message, isError = false) {
+    $('notice').textContent = message;
+    $('notice').classList.toggle('error', isError);
+}
+
+function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[character]));
+}
+
+function resetForm() {
+    $('criteriaForm').reset();
+    $('criterionId').value = '';
+    $('formTitle').textContent = 'Add criterion';
+    $('saveButton').textContent = 'Add criterion';
+    $('cancelButton').hidden = true;
+}
+
+function updateWeightDisplay(total) {
+    const weight = Number(total) || 0;
+
+    $('weightTotal').textContent = weight.toFixed(2) + '%';
+
+    $('weightTotal').classList.toggle(
+        'valid',
+        Math.abs(weight - 100) < 0.001
+    );
+
+    $('weightTotal').classList.toggle(
+        'invalid',
+        weight > 100
+    );
+
+    $('weightBar').style.width =
+        Math.min(weight, 100) + '%';
+
+    if (Math.abs(weight - 100) < 0.001) {
+        $('weightMessage').textContent =
+            'Complete! The criteria weights equal 100%.';
+    } else if (weight < 100) {
+        $('weightMessage').textContent =
+            'Remaining weight: ' + (100 - weight).toFixed(2) + '%.';
+    } else {
+        $('weightMessage').textContent =
+            'The total weight exceeds 100%.';
+    }
+}
+
+async function loadEvents() {
+    const events = await api('/events');
+
+    const select = $('eventSelect');
+
+    select.innerHTML =
+        '<option value="">Select an event</option>' +
+        events.map(event => `
+            <option value="${esc(event.id)}">
+                ${esc(event.event_name)}
+            </option>
+        `).join('');
+}
+
+async function loadCriteria() {
+    if (!currentEventId) {
+        criteriaList = [];
+
+        $('criteriaBody').innerHTML = `
+            <tr>
+                <td colspan="5" class="muted">
+                    Select an event first.
+                </td>
+            </tr>
+        `;
+
+        updateWeightDisplay(0);
+        return;
+    }
+
+    $('criteriaBody').innerHTML = `
+        <tr>
+            <td colspan="5" class="muted">
+                Loading criteria...
+            </td>
+        </tr>
+    `;
+
+    try {
+        const [rows, total] = await Promise.all([
+            api('/criteria/event/' + currentEventId),
+            api('/criteria/event/' + currentEventId + '/total-weight')
+        ]);
+
+        criteriaList = rows || [];
+
+        updateWeightDisplay(total.total_weight);
+
+        if (!criteriaList.length) {
+            $('criteriaBody').innerHTML = `
+                <tr>
+                    <td colspan="5" class="muted">
+                        No criteria have been added to this event.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        $('criteriaBody').innerHTML = criteriaList.map(item => `
+            <tr>
+                <td>${esc(item.id)}</td>
+                <td><strong>${esc(item.name)}</strong></td>
+                <td>${Number(item.weight).toFixed(2)}%</td>
+                <td>${Number(item.max_score).toFixed(2)}</td>
+                <td>
+                    <button
+                        type="button"
+                        class="small secondary"
+                        data-edit="${esc(item.id)}">
+                        Edit
+                    </button>
+
+                    <button
+                        type="button"
+                        class="small danger"
+                        data-delete="${esc(item.id)}">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (error) {
+        show(error.message, true);
+
+        $('criteriaBody').innerHTML = `
+            <tr>
+                <td colspan="5" class="muted">
+                    Unable to load criteria.
+                </td>
+            </tr>
+        `;
+    }
+}
+
+$('eventSelect').addEventListener('change', async () => {
+    currentEventId = $('eventSelect').value;
+    resetForm();
+    await loadCriteria();
+});
+
+$('criteriaForm').addEventListener('submit', async event => {
+    event.preventDefault();
+
+    if (!currentEventId) {
+        show('Please select an event first.', true);
+        return;
+    }
+
+    const id = $('criterionId').value;
+
+    const payload = {
+        name: $('criterionName').value.trim(),
+        weight: Number($('criterionWeight').value),
+        max_score: Number($('maxScore').value)
+    };
+
+    if (
+        !payload.name ||
+        !Number.isFinite(payload.weight) ||
+        payload.weight <= 0 ||
+        payload.weight > 100 ||
+        !Number.isFinite(payload.max_score) ||
+        payload.max_score <= 0
+    ) {
+        show('Please enter a valid criterion name, weight, and maximum score.', true);
+        return;
+    }
+
+    if (!id) {
+        payload.event_id = Number(currentEventId);
+    }
+
+    $('saveButton').disabled = true;
+
+    try {
+        await api(
+            id ? '/criteria/' + id : '/criteria',
+            {
+                method: id ? 'PUT' : 'POST',
+                body: JSON.stringify(payload)
+            }
+        );
+
+        show(id ? 'Criterion updated successfully.' : 'Criterion added successfully.');
+
+        resetForm();
+        await loadCriteria();
+
+    } catch (error) {
+        show(error.message, true);
+    } finally {
+        $('saveButton').disabled = false;
+    }
+});
+
+$('criteriaBody').addEventListener('click', async event => {
+    const editButton = event.target.closest('[data-edit]');
+    const deleteButton = event.target.closest('[data-delete]');
+
+    if (editButton) {
+        const item = criteriaList.find(
+            row => String(row.id) === editButton.dataset.edit
+        );
+
+        if (!item) return;
+
+        $('criterionId').value = item.id;
+        $('criterionName').value = item.name;
+        $('criterionWeight').value = item.weight;
+        $('maxScore').value = item.max_score;
+
+        $('formTitle').textContent = 'Edit criterion #' + item.id;
+        $('saveButton').textContent = 'Save changes';
+        $('cancelButton').hidden = false;
+
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+    if (deleteButton) {
+        const id = deleteButton.dataset.delete;
+
+        if (!confirm('Delete criterion #' + id + '?')) {
+            return;
+        }
+
+        try {
+            await api('/criteria/' + id, {
+                method: 'DELETE'
+            });
+
+            show('Criterion deleted successfully.');
+
+            if ($('criterionId').value === id) {
+                resetForm();
+            }
+
+            await loadCriteria();
+
+        } catch (error) {
+            show(error.message, true);
+        }
+    }
+});
+
+$('cancelButton').addEventListener('click', resetForm);
+
+(async function start() {
+    try {
+        await window.NorsuTransaction.requireAdmin();
+
+        await loadEvents();
+
+        currentEventId = $('eventSelect').value;
+
+        show('Administrator access verified. Select an event to manage criteria.');
+
+    } catch (error) {
+        show(error.message, true);
+    }
+})();
+</script>
+
 </body>
 </html>
