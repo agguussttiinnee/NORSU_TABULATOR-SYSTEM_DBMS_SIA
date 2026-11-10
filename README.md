@@ -61,6 +61,17 @@ Cells stay blank until the member finishes that piece. The progress row stays bl
 | `GET /api/events/:id/participants` | admin, judge | Roster for an event (INNER JOIN of `event_participants`, `events`, `participants` and `colleges`); a judge must be assigned to that event |
 | `POST /api/events/:id/participants` | admin | Registers a participant in one transaction; returns 409 if the entry number or participant is already in the event |
 | `DELETE /api/events/:id/participants/:registrationId` | admin | Removes a registration |
+| GET /api/score-submissions | admin, judge | Lists all submissions for an admin, or a judge's own submissions |
+| GET /api/score-submissions/:id | admin, owner judge | Returns one submission |
+| POST /api/score-submissions | judge | Creates a draft submission for an assigned event |
+| PATCH /api/score-submissions/:id/submit | judge | Checks all scores are in and weights total 100%, then locks the submission |
+| DELETE /api/score-submissions/:id | admin | Deletes a draft submission |
+| GET /api/score-submissions/report/judges-vs-submissions | admin | Join report of judges and their submissions (FULL OUTER JOIN) |
+| GET /api/score-revisions | any logged-in user | Lists revision requests (admins see all, judges see their own) |
+| GET /api/score-revisions/:id | any logged-in user | Returns one revision request |
+| POST /api/score-revisions | judge | Requests a change to a locked submission |
+| PATCH /api/score-revisions/:id/decide | admin | Approves or rejects a revision request |
+| GET /api/audit-logs | admin | Lists audit log entries |
 
 Status codes used: `400` bad input, `401` missing or expired token, `403` not an admin, `404` not found, `409` duplicate (email already used, or judge already assigned), `201` created.
 
@@ -75,6 +86,11 @@ Status codes used: `400` bad input, `401` missing or expired token, `403` not an
 | `/awards.html` | admin | Shows the leaderboard and lets you add, edit and delete awards |
 | `/events.html` | admin | List, add, edit and delete events |
 | `/participant-registration.html` | admin | Registers a participant for an event and shows the event roster |
+| judge-scoring.html | judge | Scores participants, saves scores, submits and locks them, and requests a revision |
+| revision-requests.html | admin | Lists judges' revision requests (pending first) and approves or rejects them |
+| score-revisions.html | admin | Another list of revision requests with the event ID, with approve and reject buttons |
+| audit-logs.html | admin | Shows the audit log |
+
 
 ### Shared layout
 
