@@ -19,7 +19,7 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 |---|---|---|---|---|---|---|
 | **Tables** | `events`, `participants`, `event_participants` | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | `criteria`, `scores` | `score_submissions`, `score_revisions`, `audit_logs` |
 | **Endpoints** | `/api/events`, `/api/events/:id/participants` | `/api/colleges`, `/api/event-types`, `/api/venues` | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | `/api/criteria`, `/api/scores` | `/api/score-submissions`, `/api/score-revisions`, `/api/audit-logs` |
-| **Screens** | `events.html`, `participant-registration.html` | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | `criteria-setup.html`, `judge-scoring.html` | `audit-logs.html` |
+| **Screens** | `events.html`, `participant-registration.html` | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | `criteria-setup.html`, `judge-scoring.html` | `revision-requests.html`, `score-revisions.html`, `audit-logs.html` |
 | **Shared files** | `public/js/transaction-auth.js` | | | `public/js/layout.js`, `public/css/app.css` | | `utils/audit.js` |
 | **Join report** | `GET /api/events/:id/participants` (INNER JOIN) | `GET /api/colleges/report/no-participants` (LEFT JOIN) | `GET /api/awards/leaderboard` (INNER JOIN) | `GET /api/event-judges/report` (INNER JOIN) | `GET /api/scores/missing/:eventId` (LEFT JOIN) | `GET /api/score-submissions/report/judges-vs-submissions` (FULL OUTER JOIN using UNION) |
 | **Progress** | | | | | | |
@@ -46,13 +46,13 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 | `GET /api/event-judges` | admin | Lists assignments |
 | `POST /api/event-judges` | admin | Assigns a judge to an event |
 | `DELETE /api/event-judges/:id` | admin | Removes an assignment |
-| `GET /api/event-judges/report` | admin | Judges per event (INNER JOIN of `event_judges`, `events`, `users` and `roles`) |
+| `GET /api/event-judges/report` | admin | Shows judges per event using an INNER JOIN |
 
 ### Awards and Reports
 
 | Method and path | Who | What it does |
 |---|---|---|
-| `GET /api/awards/leaderboard` | admin, judge | Leaderboard rows with participant, college and event |
+| `GET /api/awards/leaderboard` | admin, judge | Shows leaderboard rows with participant, college and event |
 | `GET /api/awards/categories` | admin, judge | Lists award categories |
 | `POST /api/awards/categories` | admin | Adds an award category |
 | `GET /api/awards` | admin, judge | Lists awards (optional `event_id`) |
@@ -60,7 +60,6 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 | `POST /api/awards` | admin | Creates an award |
 | `PUT` or `PATCH /api/awards/:id` | admin | Updates an award |
 | `DELETE /api/awards/:id` | admin | Soft-deletes an award |
-| `GET /api/awards/leaderboard` | admin, judge | Gets leaderboard information using INNER JOINs |
 
 ### Events and Participants
 
@@ -170,6 +169,8 @@ Participants are ranked from highest to lowest final score.
 | `/participant-registration.html` | admin | Registers a participant for an event and shows the event roster |
 | `/criteria-setup.html` | admin | Creates, edits and deletes event criteria and displays total criterion weights |
 | `/judge-scoring.html` | judge | Displays assigned events, participants, criteria, score inputs, submission status and revision requests |
+| `/revision-requests.html` | admin | Reviews judges' score revision requests |
+| `/score-revisions.html` | admin | Displays and manages score revision records |
 | `/audit-logs.html` | admin | Displays recorded system activities |
 
 ## Shared Layout
@@ -226,4 +227,4 @@ Any page can use the shared header, menu and login guard with three lines:
 - Make small commits with clear messages such as `feat:`, `fix:`, and `docs:`.
 - Open a pull request for each finished piece.
 - Ask another group member to review the pull request before merging.
-- Merge using **Create a merge commit** when the group approves the changes.eone else to review it, and merge it with **Create a merge commit**.
+- Merge using **Create a merge commit** when the group approves the changes.
