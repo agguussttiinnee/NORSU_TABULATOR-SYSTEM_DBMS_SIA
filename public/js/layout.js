@@ -24,8 +24,9 @@
       { label: 'Users', href: '/users.html' },
       { label: 'Judge assignment', href: '/judge-assignment.html' }
     ],
-    judge: [
-      { label: 'My events', href: '/judge-home.html' }
+        judge: [
+      { label: 'My events', href: '/judge-home.html' },
+      { label: 'Scoring', href: '/judge-scoring.html' }
     ]
   };
 
