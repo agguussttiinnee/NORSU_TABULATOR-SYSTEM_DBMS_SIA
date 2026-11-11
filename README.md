@@ -10,23 +10,23 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 | Bernadette Callenero | `@na-dette` | Master data |
 | Gretchen Hope Cabudbud | `@gretchenhope-arch` | Reports |
 | Montessa Busmeon | `@mntxsa` | Core: login, users, judge assignment |
-| Izy Mae Adrivan | `@izymaeadrivan16` | Rules |
+| Izy Mae Adrivan | `@izymaeadrivan16` | Rules and scoring |
 | Resty Catipay | `@catipayresty` | Workflow and audit |
 
-## Ownership matrix
+## Ownership Matrix
 
 | | Carl | Bernadette | Gretchen | Montessa | Izy | Resty |
 |---|---|---|---|---|---|---|
 | **Tables** | `events`, `participants`, `event_participants` | `colleges`, `event_types`, `venues` | `award_categories`, `awards` | `roles`, `users`, `event_judges` | `criteria`, `scores` | `score_submissions`, `score_revisions`, `audit_logs` |
 | **Endpoints** | `/api/events`, `/api/events/:id/participants` | `/api/colleges`, `/api/event-types`, `/api/venues` | `/api/awards` | `/api/auth`, `/api/users`, `/api/event-judges` | `/api/criteria`, `/api/scores` | `/api/score-submissions`, `/api/score-revisions`, `/api/audit-logs` |
 | **Screens** | `events.html`, `participant-registration.html` | `colleges.html` | `awards.html` | `login.html`, `judge-home.html`, `users.html`, `judge-assignment.html` | `criteria-setup.html`, `judge-scoring.html` | `revision-requests.html`, `score-revisions.html`, `audit-logs.html` |
-| **Shared files** | `public/js/transaction-auth.js` | | | `public/js/layout.js`, `public/css/app.css` | | |
-| **Join report** | `GET /api/events/:id/participants` (INNER JOIN of `event_participants`, `events`, `participants` and `colleges`) | `GET /api/colleges/report/no-participants` (LEFT JOIN) | `GET /api/awards/leaderboard` (INNER JOIN) | `GET /api/event-judges/report` (INNER JOIN) | `GET /api/scores/missing/:eventId` (LEFT JOIN) | `GET /api/score-submissions/report` (FULL OUTER JOIN using UNION) |
+| **Shared files** | `public/js/transaction-auth.js` | | | `public/js/layout.js`, `public/css/app.css` | | `utils/audit.js` |
+| **Join report** | `GET /api/events/:id/participants` (INNER JOIN) | `GET /api/colleges/report/no-participants` (LEFT JOIN) | `GET /api/awards/leaderboard` (INNER JOIN) | `GET /api/event-judges/report` (INNER JOIN) | `GET /api/scores/missing/:eventId` (LEFT JOIN) | `GET /api/score-submissions/report/judges-vs-submissions` (FULL OUTER JOIN using UNION) |
 | **Progress** | | | | | | |
 
 ## Endpoints
 
-### Authentication and users
+### Authentication and Users
 
 | Method and path | Who | What it does |
 |---|---|---|
@@ -39,29 +39,29 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 | `PUT` or `PATCH /api/users/:id` | admin | Updates a user; every field is optional |
 | `DELETE /api/users/:id` | admin | Soft-deletes a user (not your own account) |
 
-### Judge assignments
+### Judge Assignments
 
 | Method and path | Who | What it does |
 |---|---|---|
 | `GET /api/event-judges` | admin | Lists assignments |
 | `POST /api/event-judges` | admin | Assigns a judge to an event |
 | `DELETE /api/event-judges/:id` | admin | Removes an assignment |
-| `GET /api/event-judges/report` | admin | Judges per event (INNER JOIN of `event_judges`, `events`, `users` and `roles`) |
+| `GET /api/event-judges/report` | admin | Shows judges per event using an INNER JOIN |
 
-### Awards and reports
+### Awards and Reports
 
 | Method and path | Who | What it does |
 |---|---|---|
-| `GET /api/awards/leaderboard` | admin, judge | Leaderboard rows with participant, college and event (INNER JOIN of `awards`, `award_categories`, `events`, `participants` and `colleges`) |
+| `GET /api/awards/leaderboard` | admin, judge | Shows leaderboard rows with participant, college and event |
 | `GET /api/awards/categories` | admin, judge | Lists award categories |
 | `POST /api/awards/categories` | admin | Adds an award category |
 | `GET /api/awards` | admin, judge | Lists awards (optional `event_id`) |
 | `GET /api/awards/:id` | admin, judge | Returns one award |
-| `POST /api/awards` | admin | Creates an award (the rank must be free for that event and category) |
-| `PUT` or `PATCH /api/awards/:id` | admin | Updates an award; every field is optional |
-| `DELETE /api/awards/:id` | admin | Soft-deletes an award; its rank can be used again |
+| `POST /api/awards` | admin | Creates an award |
+| `PUT` or `PATCH /api/awards/:id` | admin | Updates an award |
+| `DELETE /api/awards/:id` | admin | Soft-deletes an award |
 
-### Events and participants
+### Events and Participants
 
 | Method and path | Who | What it does |
 |---|---|---|
@@ -70,13 +70,13 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 | `GET /api/events` | admin | Lists active events |
 | `GET /api/events/:id` | admin | Returns one event |
 | `POST /api/events` | admin | Creates an event |
-| `PUT` or `PATCH /api/events/:id` | admin | Updates an event; every field is optional |
+| `PUT` or `PATCH /api/events/:id` | admin | Updates an event |
 | `DELETE /api/events/:id` | admin | Soft-deletes an event |
-| `GET /api/events/:id/participants` | admin, judge | Roster for an event (INNER JOIN of `event_participants`, `events`, `participants` and `colleges`); a judge must be assigned to that event |
-| `POST /api/events/:id/participants` | admin | Registers a participant in one transaction; returns 409 if the entry number or participant is already in the event |
+| `GET /api/events/:id/participants` | admin, judge | Gets the roster for an event; a judge must be assigned to that event |
+| `POST /api/events/:id/participants` | admin | Registers a participant in one transaction |
 | `DELETE /api/events/:id/participants/:registrationId` | admin | Removes a registration |
 
-### Criteria and scoring — Izy Mae Adrivan
+### Criteria and Scoring — Izy Mae Adrivan
 
 | Method and path | Who | What it does |
 |---|---|---|
@@ -94,7 +94,7 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 | `GET /api/scores/rankings/:eventId` | admin | Gets event rankings using weighted scores and tie-breaking rules |
 | `GET /api/scores/missing/:eventId` | admin | Lists participants with missing scores using a LEFT JOIN |
 
-### Score submission, revision, and audit
+### Score Submission, Revision, and Audit
 
 | Method and path | Who | What it does |
 |---|---|---|
@@ -102,31 +102,31 @@ A web system for managing school events (such as pageants and Hugyawan), registe
 | `GET /api/score-submissions/:id` | admin, owner judge | Gets one submission |
 | `POST /api/score-submissions` | judge | Creates a draft submission for an assigned event |
 | `PATCH /api/score-submissions/:id/submit` | judge | Submits and locks the judge's scores |
-| `GET /api/score-submissions/report` | admin | Shows assigned judges and their submissions using a FULL OUTER JOIN implemented with UNION |
+| `GET /api/score-submissions/report/judges-vs-submissions` | admin | Compares assigned judges and submissions using a FULL OUTER JOIN implemented with UNION |
 | `POST /api/score-revisions` | judge | Requests a revision with a reason |
 | `GET /api/score-revisions` | admin, judge | Lists revision requests according to the user's role |
 | `GET /api/audit-logs` | admin | Views recorded system activities |
 
-Status codes used include `400` for bad input, `401` for missing or expired tokens, `403` for forbidden actions, `404` for missing records, `409` for conflicts or duplicates, and `201` for successful creation.
+Status codes include `400` for bad input, `401` for missing or expired tokens, `403` for forbidden actions, `404` for missing records, `409` for conflicts or duplicates, and `201` for successful creation.
 
 ## Scoring Rules and Computation
 
-### Criteria setup
+### Criteria Setup
 
 - Each event has its own scoring criteria.
 - Each criterion has a name, weight, and maximum score.
-- The total weight of all criteria for an event must equal exactly 100%.
-- Criteria weights must be positive.
+- The total weight of all criteria for an event must equal 100%.
+- Criterion weights must be positive.
 - A criterion cannot be deleted if scores are already associated with it.
 
-### Score validation
+### Score Validation
 
 - Judges can only score events assigned to them.
 - Scores must be zero or greater.
 - Scores cannot exceed the criterion's maximum score.
 - Judges must provide scores for every registered participant under every criterion before submitting.
 
-### Weighted ranking formula
+### Weighted Ranking Formula
 
 For each criterion:
 
@@ -136,7 +136,7 @@ The final score is the sum of all weighted criterion scores.
 
 Participants are ranked from highest to lowest final score.
 
-### Tie-breaking rules
+### Tie-Breaking Rules
 
 1. Compare participants' final weighted scores.
 2. If their final scores are equal, compare their scores in the highest-weighted criterion first.
@@ -164,7 +164,7 @@ Participants are ranked from highest to lowest final score.
 | `/judge-home.html` | judge | Judge landing page |
 | `/users.html` | admin | Lists, adds, edits and deletes users |
 | `/judge-assignment.html` | admin | Assigns and removes judges and shows the judges-per-event report |
-| `/awards.html` | admin | Shows the leaderboard and lets admins add, edit and delete awards |
+| `/awards.html` | admin | Shows the leaderboard and lets admins manage awards |
 | `/events.html` | admin | Lists, adds, edits and deletes events |
 | `/participant-registration.html` | admin | Registers a participant for an event and shows the event roster |
 | `/criteria-setup.html` | admin | Creates, edits and deletes event criteria and displays total criterion weights |
@@ -195,14 +195,14 @@ Any page can use the shared header, menu and login guard with three lines:
    ```
 
 3. **Create your `.env` file.** Copy `.env.example` to `.env` and fill in your own MySQL user and password, `DB_NAME=norsu_tabulator`, a `JWT_SECRET`, and the admin account details (`ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`). Never commit `.env`.
-4. **Create the database.** In MySQL Workbench, open and run these files from the `database/` folder in this order (the foreign keys file must run last):
+4. **Create the database.** In MySQL Workbench, open and run the SQL files from the `database/` folder in the correct order. Run the foreign keys file last.
 
    1. `00_init.sql`
    2. `01_montessa_core.sql`
    3. `02_bernadette_master.sql`
    4. `02_carl_transactions.sql`
    5. `06_gretchen_reports.sql`
-   6. `database/98_seed_master_data.sql`
+   6. `98_seed_master_data.sql`
    7. `99_foreign_keys.sql`
 
 5. **Create the admin account:**
@@ -223,6 +223,8 @@ Any page can use the shared header, menu and login guard with three lines:
 
 ## Git Workflow
 
-- Work on your own branch, for example `feature/montessa-screens`. Never push directly to `main`.
+- Work on your own branch, for example `feature/izy-rules`. Never push directly to `main`.
 - Make small commits with clear messages such as `feat:`, `fix:`, and `docs:`.
-- Open a pull request for each finished piece, ask someone else to review it, and merge it with **Create a merge commit**.
+- Open a pull request for each finished piece.
+- Ask another group member to review the pull request before merging.
+- Merge using **Create a merge commit** when the group approves the changes.
