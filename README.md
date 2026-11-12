@@ -228,3 +228,10 @@ Any page can use the shared header, menu and login guard with three lines:
 - Open a pull request for each finished piece.
 - Ask another group member to review the pull request before merging.
 - Merge using **Create a merge commit** when the group approves the changes.
+
+
+## Database Entity Relationship Diagram (ERD)
+
+The following diagram illustrates the database structure of the NORSU Tabulator System, including its entities, attributes, and relationships.
+
+![NORSU Tabulator ER Diagram](docs/norsu_er_diagram.png)
